@@ -52,14 +52,14 @@ android {
 }
 
 dependencies {
-    implementation ("com.google.accompanist:accompanist-insets:0.23.1")
-    implementation ("com.google.android.exoplayer:exoplayer-core:2.17.1")
-    implementation ("com.google.android.exoplayer:exoplayer-ui:2.17.1")
+    implementation (libs.accompanist.insets)
+    implementation (libs.exoplayer.core)
+    implementation (libs.exoplayer.ui)
 
-    implementation("io.coil-kt:coil-compose:2.4.0")
-    implementation("com.google.firebase:firebase-storage-ktx:20.5.0")
-    implementation("androidx.compose.material:material:1.7.8")
-    implementation("androidx.datastore:datastore-preferences:1.0.0")
+    implementation(libs.coil.compose)
+    implementation(libs.firebase.storage.ktx.v2050)
+    implementation(libs.androidx.material)
+    implementation(libs.androidx.datastore.preferences.v100)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.runtime.livedata)
