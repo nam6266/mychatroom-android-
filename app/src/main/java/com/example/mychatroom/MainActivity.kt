@@ -3,6 +3,7 @@ package com.example.mychatroom
 import android.annotation.SuppressLint
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -47,6 +48,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -61,6 +63,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import com.example.mychatroom.data.Results
 import com.example.mychatroom.navigate.DrawerScreen
 import com.example.mychatroom.navigate.NavigationGraph
 import com.example.mychatroom.navigate.Screen
@@ -107,22 +110,30 @@ fun MainScreen(
     settingManager: SettingManager
 ) {
 
-    var startDestination by remember { mutableStateOf<String?>(null) }
+
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var drawerSeleted by remember { mutableStateOf("") }
     var backToLogin by remember { mutableStateOf(false) }
     var needLogin by remember { mutableStateOf(false) }
+    val authResult by authViewModel.authResultLogin.observeAsState()
+
+    val isLoggedIn = (authResult as? Results.Success)?.data?.first == true
+    val startDestination = if (isLoggedIn) Screen.HomeScreen.route else Screen.LoginScreen.route
+    val loading by authViewModel.isLoading.observeAsState(initial = true)
 
     LaunchedEffect(Unit) {
-        val isLoggedIn = sessionManager.isLogin()
-        startDestination = if (isLoggedIn) {
-            Screen.HomeScreen.route
-        } else {
-            Screen.LoginScreen.route
-        }
+        authViewModel.checkLoginSession()
     }
-    if (startDestination != null) {
+
+    if (loading) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+    } else {
         ModalNavigationDrawer(
             drawerState = drawerState,
             drawerContent = {
@@ -155,15 +166,18 @@ fun MainScreen(
             content = {
                 Scaffold(
                     topBar = {
-                        TopAppBar(navController, pressOnDrawer = {
-                            scope.launch {
-                                if (sessionManager.isLogin()) drawerState.open() else needLogin =
-                                    true
-                            }
-                        })
+                        if (isLoggedIn) {
+                            TopAppBar(navController, pressOnDrawer = {
+                                scope.launch {
+                                    drawerState.open()
+                                }
+                            })
+                        }
                     },
                     bottomBar = {
-                        BottomAppBar(navController)
+                        if (isLoggedIn) {
+                            BottomAppBar(navController)
+                        }
                     },
                 ) { innerPadding ->
                     Box(modifier = Modifier.padding(innerPadding)) {
@@ -172,111 +186,109 @@ fun MainScreen(
                             authViewModel = authViewModel,
                             sessionManager = sessionManager,
                             settingManager = settingManager,
-                            startDestination = startDestination!!
+                            startDestination = startDestination
                         )
                     }
                 }
             }
         )
-        if (backToLogin) {
-            AlertDialog(
-                onDismissRequest = { backToLogin = false },
-                confirmButton = {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(),
-                        contentAlignment = Alignment.Center
+    }
+
+
+    if (backToLogin) {
+        AlertDialog(
+            onDismissRequest = { backToLogin = false },
+            confirmButton = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                navController.navigate(Screen.LoginScreen.route)
+                                sessionManager.clearSession()
+                                backToLogin = false
+                            }
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
                     ) {
-                        Button(
-                            onClick = {
-                                scope.launch {
-                                    navController.navigate(Screen.LoginScreen.route)
-                                    sessionManager.clearSession()
-                                    backToLogin = false
-                                }
-                            },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
-                            )
-                        ) {
-                            Text("Log Out", color = MaterialTheme.colorScheme.onBackground)
-                        }
+                        Text("Log Out", color = MaterialTheme.colorScheme.onBackground)
                     }
-                },
-                title = null,
-                text = {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Clear,
-                            contentDescription = "Error",
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(48.dp)
-                        )
+                }
+            },
+            title = null,
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "Error",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(48.dp)
+                    )
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                        Text(
-                            text = "Return to Login Screen",
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                color = MaterialTheme.colorScheme.onSurface
-                            ),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                },
-                shape = RoundedCornerShape(16.dp),
-                tonalElevation = AlertDialogDefaults.TonalElevation,
-                containerColor = MaterialTheme.colorScheme.surface,
-            )
-        }
+                    Text(
+                        text = "Return to Login Screen",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            },
+            shape = RoundedCornerShape(16.dp),
+            tonalElevation = AlertDialogDefaults.TonalElevation,
+            containerColor = MaterialTheme.colorScheme.surface,
+        )
+    }
 
-        if (needLogin) {
-            AlertDialog(
-                onDismissRequest = { needLogin = false },
-                confirmButton = {
+    if (needLogin) {
+        AlertDialog(
+            onDismissRequest = { needLogin = false },
+            confirmButton = {
 
-                },
-                title = null,
-                text = {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Clear,
-                            contentDescription = "Error",
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(48.dp)
-                        )
+            },
+            title = null,
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "Error",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(48.dp)
+                    )
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                        Text(
-                            text = "Please Login",
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                color = MaterialTheme.colorScheme.onSurface
-                            ),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                },
-                shape = RoundedCornerShape(16.dp),
-                tonalElevation = AlertDialogDefaults.TonalElevation,
-                containerColor = MaterialTheme.colorScheme.surface,
-            )
-        }
-    } else {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
+                    Text(
+                        text = "Please Login",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            },
+            shape = RoundedCornerShape(16.dp),
+            tonalElevation = AlertDialogDefaults.TonalElevation,
+            containerColor = MaterialTheme.colorScheme.surface,
+        )
     }
 }
 

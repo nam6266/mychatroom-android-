@@ -36,7 +36,7 @@ class SessionManager(private val context: Context) {
         }
     }
 
-    suspend fun isLogin(): Boolean {
+     suspend fun isLogin(): Boolean {
         val preferences = context.dataStore.data.first()
         return preferences.asMap().isNotEmpty()
     }

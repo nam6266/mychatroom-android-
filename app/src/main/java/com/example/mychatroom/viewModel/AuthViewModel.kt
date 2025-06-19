@@ -9,7 +9,9 @@ import com.example.mychatroom.data.Results
 import com.example.mychatroom.data.User
 import com.example.mychatroom.repository.UserRepository
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 class AuthViewModel : ViewModel() {
     private val userRepository: UserRepository = UserRepository(
@@ -21,6 +23,9 @@ class AuthViewModel : ViewModel() {
 
     private val _authResultSignUp = MutableLiveData<Results<Pair<Boolean, User>>?>()
     val authResultSignUp: LiveData<Results<Pair<Boolean, User>>?> get() = _authResultSignUp
+
+    private val _isLoading = MutableLiveData(true)
+    val isLoading: LiveData<Boolean> get() = _isLoading
 
     fun signUp(email: String, password: String, firstName: String, lastName: String) {
         viewModelScope.launch {
@@ -35,7 +40,37 @@ class AuthViewModel : ViewModel() {
     }
 
     fun clearLoginResult() {
+        FirebaseAuth.getInstance().signOut()
         _authResultLogin.value = null
         _authResultSignUp.value = null
     }
+
+    fun checkLoginSession() {
+        _isLoading.value = true
+        val firebaseUser = FirebaseAuth.getInstance().currentUser
+        if (firebaseUser != null) {
+            viewModelScope.launch {
+                try {
+                    val snapshot = FirebaseFirestore.getInstance()
+                        .collection("users")
+                        .document(firebaseUser.uid)
+                        .get()
+                        .await()
+                    val user = snapshot.toObject(User::class.java)
+                    user?.let {
+                        _authResultLogin.value = Results.Success(Pair(true, it))
+                    } ?: run {
+                        _authResultLogin.value = Results.Error(Exception("User not found"))
+                    }
+                } catch (e: Exception) {
+                    _authResultLogin.value = Results.Error(e)
+                } finally {
+                    _isLoading.value = false
+                }
+            }
+        } else {
+            _isLoading.value = false
+        }
+    }
+
 }

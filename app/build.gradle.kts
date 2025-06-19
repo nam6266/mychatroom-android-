@@ -52,6 +52,10 @@ android {
 }
 
 dependencies {
+    implementation ("com.google.accompanist:accompanist-insets:0.23.1")
+    implementation ("com.google.android.exoplayer:exoplayer-core:2.17.1")
+    implementation ("com.google.android.exoplayer:exoplayer-ui:2.17.1")
+
     implementation("io.coil-kt:coil-compose:2.4.0")
     implementation("com.google.firebase:firebase-storage-ktx:20.5.0")
     implementation("androidx.compose.material:material:1.7.8")
