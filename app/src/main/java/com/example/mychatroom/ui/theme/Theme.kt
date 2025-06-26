@@ -31,7 +31,7 @@ private val LightColorScheme = lightColorScheme(
     onSurface = Color(0xFF1C1B1F),
     */
 )
-
+const val DEFAULT_PADDING = 44
 @Composable
 fun MyChatRoomTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),

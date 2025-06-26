@@ -23,6 +23,12 @@ sealed class DrawerScreen(val dTitle: String, val dRoute: String, @DrawableRes v
         R.drawable.ic_home
     )
 
+    object Message : DrawerScreen(
+        "ChatRoomsScreen",
+        "chatroomscreen",
+        R.drawable.ic_message
+    )
+
     object Friend : DrawerScreen(
         "Friend",
         "friendscreen",
@@ -61,4 +67,9 @@ val screensInDrawer = listOf(
     DrawerScreen.Location,
     DrawerScreen.Game,
     DrawerScreen.Logout
+)
+
+val bottomNavigator = listOf(
+    DrawerScreen.Home,
+    DrawerScreen.Message
 )
