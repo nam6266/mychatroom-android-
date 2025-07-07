@@ -3,13 +3,19 @@ package com.example.mychatroom.screen
 import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.widget.FrameLayout
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -31,13 +37,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
@@ -58,6 +67,7 @@ import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
 import com.google.android.exoplayer2.ui.StyledPlayerView
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
@@ -66,6 +76,7 @@ fun LoginScreen(
     SignUpClick: () -> Unit,
     sessionManager: SessionManager
 ) {
+
 
     val context = LocalContext.current
     val passwordFocusRequester = FocusRequester()
@@ -79,6 +90,12 @@ fun LoginScreen(
     var showDialog by remember { mutableStateOf(false) }
     val result by authViewModel.authResultLogin.observeAsState()
     var errorMess: Exception? by remember { mutableStateOf(null) }
+
+
+    val animationScope = rememberCoroutineScope()
+    var screenWidthPx by remember { mutableStateOf(0f) }
+    val transitionProgress = remember { Animatable(0f) }
+    var isLogin by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
         authViewModel.clearLoginResult()
@@ -115,27 +132,114 @@ fun LoginScreen(
         Column(
             Modifier
                 .navigationBarsWithImePadding()
-                .padding(24.dp)
-                .fillMaxSize(),
+
+                .fillMaxSize()
+                .onSizeChanged {
+                    intSize -> screenWidthPx = intSize.width.toFloat()
+                    Log.d("myapp","screenWidthPx : $screenWidthPx")
+                               },
             verticalArrangement = Arrangement.spacedBy(16.dp, alignment = Alignment.Bottom),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-                TextInput(value = email,onValueChange = { email = it }, InputType.Name, keyboardActions = KeyboardActions(onNext = {
-                    passwordFocusRequester.requestFocus()
-                }))
 
-            TextInput(value = password,onValueChange = { password = it }, InputType.Password, keyboardActions = KeyboardActions(onDone = {
-                focusManager.clearFocus()
-            }), focusRequester = passwordFocusRequester)
+            Box() {
+                // login section
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(10.dp)
+                        .graphicsLayer {
+                            this.translationX = -transitionProgress.value * screenWidthPx
+                        },
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    TextInput(
+                        value = email,
+                        onValueChange = { email = it },
+                        InputType.Name,
+                        keyboardActions = KeyboardActions(onNext = {
+                            passwordFocusRequester.requestFocus()
+                        })
+                    )
+                    Spacer(modifier = Modifier.height(20.dp))
+                    TextInput(
+                        value = password,
+                        onValueChange = { password = it },
+                        InputType.Password,
+                        keyboardActions = KeyboardActions(onDone = {
+                            focusManager.clearFocus()
+                        }),
+                        focusRequester = passwordFocusRequester
+                    )
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Button(
+                        onClick = {
+                            authViewModel.login(
+                                email.trimEnd(Char::isWhitespace),
+                                password.trimEnd(Char::isWhitespace)
+                            )
+                        }, modifier = Modifier
+                            .fillMaxWidth(),
+                        shape = RoundedCornerShape(32.dp)
+                    ) {
+                        Text("SIGN IN", Modifier.padding(vertical = 8.dp))
+                    }
+                }
 
-            Button(onClick = {
-                authViewModel.login(
-                    email.trimEnd(Char::isWhitespace),
-                    password.trimEnd(Char::isWhitespace)
-                )
-            }, modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(32.dp)) {
-                Text("SIGN IN", Modifier.padding(vertical = 8.dp))
+                // signup section
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(10.dp)
+                        .graphicsLayer {
+                            translationX = (1f - transitionProgress.value) * screenWidthPx
+                        },
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    TextInput(
+                        value = email,
+                        onValueChange = { email = it },
+                        InputType.Name,
+                        keyboardActions = KeyboardActions(onNext = {
+                            passwordFocusRequester.requestFocus()
+                        })
+                    )
+                    Spacer(modifier = Modifier.height(20.dp))
+                    TextInput(
+                        value = password,
+                        onValueChange = { password = it },
+                        InputType.Password,
+                        keyboardActions = KeyboardActions(onDone = {
+                            focusManager.clearFocus()
+                        }),
+                        focusRequester = passwordFocusRequester
+                    )
+                    Spacer(modifier = Modifier.height(20.dp))
+                    TextInput(
+                        value = password,
+                        onValueChange = { password = it },
+                        InputType.Password,
+                        keyboardActions = KeyboardActions(onDone = {
+                            focusManager.clearFocus()
+                        }),
+                        focusRequester = passwordFocusRequester
+                    )
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Button(
+                        onClick = {
+                            authViewModel.login(
+                                email.trimEnd(Char::isWhitespace),
+                                password.trimEnd(Char::isWhitespace)
+                            )
+                        }, modifier = Modifier
+                            .fillMaxWidth(),
+                        shape = RoundedCornerShape(32.dp)
+                    ) {
+                        Text("SIGN UP", Modifier.padding(vertical = 8.dp))
+                    }
+                }
             }
 
             Divider(
@@ -144,9 +248,26 @@ fun LoginScreen(
                 modifier = Modifier.padding(top = 48.dp)
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Don't have an account?", color = Color.White)
-                TextButton(onClick = {}) {
-                    Text("SIGN UP")
+                if (isLogin) {
+                    Text("Don't have an account?", color = Color.White)
+                }else {
+                    Text("Allready had an account?", color = Color.White)
+                }
+                TextButton(onClick = {
+                    animationScope.launch {
+                        val targetValue = if (isLogin) 1f else 0f
+                        transitionProgress.animateTo(
+                            targetValue = targetValue,
+                            animationSpec = tween(durationMillis = 500)
+                        )
+                        isLogin = !isLogin
+                    }
+                }) {
+                    if (isLogin) {
+                        Text("SIGN UP")
+                    }else {
+                        Text("LOGIN")
+                    }
                 }
             }
         }
@@ -200,7 +321,6 @@ fun TextInput(
             disabledIndicatorColor = Color.Transparent
         ),
         shape = RoundedCornerShape(32.dp),
-        singleLine = true,
         keyboardOptions = inputType.keyboardOptions,
         visualTransformation = inputType.visualTransformation,
         keyboardActions = keyboardActions
