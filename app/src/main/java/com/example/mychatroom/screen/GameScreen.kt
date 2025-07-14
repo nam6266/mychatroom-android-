@@ -3,7 +3,6 @@ package com.example.mychatroom.screen
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -41,18 +40,15 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.scale
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mychatroom.R
 import com.example.mychatroom.engine.GameEngine
 import com.example.mychatroom.viewModel.GameViewModel
 import kotlinx.coroutines.delay
 import java.io.InputStream
-import kotlin.math.sqrt
-import androidx.core.graphics.scale
 
 
 @Composable
@@ -97,7 +93,8 @@ fun GameScreen(gameViewModel: GameViewModel = viewModel()) {
             .onSizeChanged { size ->
                 engine.setScreen(size.width.toFloat(), size.height.toFloat())
                 if (playerImgBitmap != null) {
-                    playerPosition = playerPosition.copy(y = size.height.toFloat() - playerImgBitmap.height.toFloat()/ 2)
+                    playerPosition =
+                        playerPosition.copy(y = size.height.toFloat() - playerImgBitmap.height.toFloat() / 2)
                 }
                 scaledBackground = backgroundBitmap?.let { bitmap ->
                     scaleBitmap(bitmap, size.width, size.height) // Match canvas size
@@ -127,7 +124,7 @@ fun GameScreen(gameViewModel: GameViewModel = viewModel()) {
                         enemy.y - enemyImgBitMap.height / 2
                     )
                 )
-                drawCircle(Color.White, radius = 20.0f, center= enemy)
+//                drawCircle(Color.White, radius = 20.0f, center= enemy)
             }
         }
         if (playerImgBitmap != null) {
@@ -138,7 +135,7 @@ fun GameScreen(gameViewModel: GameViewModel = viewModel()) {
                     playerPosition.y - playerImgBitmap.height / 2
                 )
             )
-            drawCircle(Color.Red, radius = 20.0f, center= playerPosition)
+            // drawCircle(Color.Red, radius = 20.0f, center= playerPosition)
         }
 
     }

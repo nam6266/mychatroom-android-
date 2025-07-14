@@ -17,19 +17,26 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.Button
-import androidx.compose.material.Divider
-import androidx.compose.material.Icon
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
-import androidx.compose.material.TextField
-import androidx.compose.material.TextFieldDefaults
+import androidx.compose.material.TabRowDefaults.Divider
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AlertDialogDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -53,6 +60,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
@@ -77,20 +85,32 @@ fun LoginScreen(
     sessionManager: SessionManager
 ) {
 
-
     val context = LocalContext.current
+    // Login Focus
     val passwordFocusRequester = FocusRequester()
+
+    // Sign up Focus
+    val passwordSignUpFocusRequester = FocusRequester()
+    val firstNameFocusRequester = FocusRequester()
+    val lastNameFocusRequester = FocusRequester()
+
+
     val focusManager = LocalFocusManager.current
     val exoPlayer = remember { context.buildExoPlayer(getVideoUri(context)) }
-
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-    var showDialog by remember { mutableStateOf(false) }
-    val result by authViewModel.authResultLogin.observeAsState()
-    var errorMess: Exception? by remember { mutableStateOf(null) }
+    var firstName by remember { mutableStateOf("") }
+    var lastName by remember { mutableStateOf("") }
 
+    val loginResult by authViewModel.authResultLogin.observeAsState()
+    val signUpResult by authViewModel.authResultSignUp.observeAsState()
+    var errorMess: Exception? by remember { mutableStateOf(null) }
+    var showSignUpSucces by remember { mutableStateOf(false) }
+    var showSignUpFalse by remember { mutableStateOf(false) }
+    var showLoginFalse by remember { mutableStateOf(false) }
+    var showForgotPassword by remember { mutableStateOf(false)}
 
     val animationScope = rememberCoroutineScope()
     var screenWidthPx by remember { mutableStateOf(0f) }
@@ -101,17 +121,32 @@ fun LoginScreen(
         authViewModel.clearLoginResult()
     }
 
-    LaunchedEffect(result) {
-        when (result) {
+    LaunchedEffect(loginResult) {
+        when (loginResult) {
             is Results.Success -> {
-                val user = (result as Results.Success<Pair<Boolean, User>>).data.second
+                val user = (loginResult as Results.Success<Pair<Boolean, User>>).data.second
                 sessionManager.saveUserSession(user)
                 LoginClick()
             }
 
             is Results.Error -> {
-                errorMess = (result as Results.Error).exception
-                showDialog = true
+                errorMess = (loginResult as Results.Error).exception
+                showLoginFalse = true
+            }
+
+            else -> {}
+        }
+    }
+
+    LaunchedEffect(signUpResult) {
+        when (signUpResult) {
+            is Results.Success -> {
+                showSignUpSucces = true
+            }
+
+            is Results.Error -> {
+                errorMess = (signUpResult as Results.Error).exception
+                showSignUpFalse = true
             }
 
             else -> {}
@@ -201,38 +236,50 @@ fun LoginScreen(
                     TextInput(
                         value = email,
                         onValueChange = { email = it },
-                        InputType.Name,
+                        inputType = InputType.Name,
                         keyboardActions = KeyboardActions(onNext = {
-                            passwordFocusRequester.requestFocus()
+                            passwordSignUpFocusRequester.requestFocus()
                         })
                     )
                     Spacer(modifier = Modifier.height(20.dp))
                     TextInput(
                         value = password,
                         onValueChange = { password = it },
-                        InputType.Password,
+                        inputType =  InputType.Password,
                         keyboardActions = KeyboardActions(onDone = {
-                            focusManager.clearFocus()
+                            firstNameFocusRequester.requestFocus()
                         }),
-                        focusRequester = passwordFocusRequester
+                        focusRequester = passwordSignUpFocusRequester
                     )
                     Spacer(modifier = Modifier.height(20.dp))
                     TextInput(
-                        value = password,
-                        onValueChange = { password = it },
-                        InputType.Password,
+                        value = firstName,
+                        onValueChange = { firstName = it },
+                        inputType = InputType.Name,
+                        keyboardActions = KeyboardActions(onDone = {
+                            lastNameFocusRequester.requestFocus()
+                        }),
+                        focusRequester = firstNameFocusRequester
+                    )
+                    Spacer(modifier = Modifier.height(20.dp))
+                    TextInput(
+                        value = lastName,
+                        onValueChange = { lastName = it },
+                        inputType = InputType.Name,
                         keyboardActions = KeyboardActions(onDone = {
                             focusManager.clearFocus()
                         }),
-                        focusRequester = passwordFocusRequester
+                        focusRequester = lastNameFocusRequester
                     )
                     Spacer(modifier = Modifier.height(20.dp))
                     Button(
                         onClick = {
-                            authViewModel.login(
-                                email.trimEnd(Char::isWhitespace),
-                                password.trimEnd(Char::isWhitespace)
-                            )
+                            authViewModel.signUp(email, password, lastName, firstName)
+                            //  after signup reset all to null
+                            email = ""
+                            password = ""
+                            lastName = ""
+                            firstName = ""
                         }, modifier = Modifier
                             .fillMaxWidth(),
                         shape = RoundedCornerShape(32.dp)
@@ -241,12 +288,19 @@ fun LoginScreen(
                     }
                 }
             }
-
             Divider(
                 color = Color.White.copy(alpha = 0.3f),
                 thickness = 1.dp,
                 modifier = Modifier.padding(top = 48.dp)
             )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Forgot your password?", color = Color.White)
+                TextButton(onClick = {
+                    showForgotPassword = true
+                }) {
+                    Text("CLICK HERE")
+                }
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (isLogin) {
                     Text("Don't have an account?", color = Color.White)
@@ -254,6 +308,7 @@ fun LoginScreen(
                     Text("Allready had an account?", color = Color.White)
                 }
                 TextButton(onClick = {
+                    password = "" // Clear the password field
                     animationScope.launch {
                         val targetValue = if (isLogin) 1f else 0f
                         transitionProgress.animateTo(
@@ -271,6 +326,230 @@ fun LoginScreen(
                 }
             }
         }
+    }
+
+    if (showLoginFalse) {
+        AlertDialog(
+            onDismissRequest = { showLoginFalse = false },
+            confirmButton = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Button(
+                        onClick = { showLoginFalse = false },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Dismiss", color = MaterialTheme.colorScheme.onBackground)
+                    }
+                }
+            },
+            title = null,
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "Error",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(48.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = errorMess?.message ?: "An unexpected error occurred.",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            color = MaterialTheme.colorScheme.onBackground
+                        ),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            },
+            shape = RoundedCornerShape(16.dp),
+            tonalElevation = AlertDialogDefaults.TonalElevation,
+            containerColor = MaterialTheme.colorScheme.surface,
+        )
+    }
+    if (showSignUpFalse) {
+        AlertDialog(
+            onDismissRequest = { showSignUpFalse = false },
+            confirmButton = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Button(
+                        onClick = { showSignUpFalse = false },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Dismiss", color = MaterialTheme.colorScheme.onBackground)
+                    }
+                }
+            },
+            title = null,
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "Error",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(48.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = errorMess?.message ?: "An unexpected error occurred.",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            color = MaterialTheme.colorScheme.onBackground
+                        ),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            },
+            shape = RoundedCornerShape(16.dp),
+            tonalElevation = AlertDialogDefaults.TonalElevation,
+            containerColor = MaterialTheme.colorScheme.surface,
+        )
+    }
+    if (showSignUpSucces) {
+        AlertDialog(
+            onDismissRequest = { showSignUpSucces = false },
+            confirmButton = {}, // You can leave these empty if you're only using the custom button
+            dismissButton = {},
+            title = null,
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "Success",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(64.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Account created successfully!",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = 8.dp),
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+
+                    Text(
+                        text = "Would you like to go to the login screen now?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(bottom = 24.dp),
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+
+                    Button(
+                        onClick = {
+                            password = "" // Clear the password field
+                            animationScope.launch {
+                                val targetValue = if (isLogin) 1f else 0f
+                                transitionProgress.animateTo(
+                                    targetValue = targetValue,
+                                    animationSpec = tween(durationMillis = 500)
+                                )
+                                isLogin = !isLogin
+                                showSignUpSucces = false
+                            }
+                        },
+                        shape = RoundedCornerShape(20.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        modifier = Modifier
+                            .fillMaxWidth(0.7f)
+                            .height(48.dp)
+                    ) {
+                        Text(
+                            "Go to Login",
+                            color = MaterialTheme.colorScheme.onBackground,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                }
+            },
+            shape = RoundedCornerShape(16.dp),
+            tonalElevation = AlertDialogDefaults.TonalElevation,
+            containerColor = MaterialTheme.colorScheme.surface,
+        )
+    }
+    if (showForgotPassword) {
+        AlertDialog(
+            onDismissRequest = { showForgotPassword = false },
+            confirmButton = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Button(
+                        onClick = { showForgotPassword = false },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Dismiss", color = MaterialTheme.colorScheme.onBackground)
+                    }
+                }
+            },
+            title = null,
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "Error",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(48.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "I will do this when I no longer lazy",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            color = MaterialTheme.colorScheme.onBackground
+                        ),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            },
+            shape = RoundedCornerShape(16.dp),
+            tonalElevation = AlertDialogDefaults.TonalElevation,
+            containerColor = MaterialTheme.colorScheme.surface,
+        )
     }
 }
 
@@ -314,11 +593,12 @@ fun TextInput(
             .focusRequester(focusRequester ?: FocusRequester()),
         leadingIcon = { Icon(imageVector = inputType.icon, null) },
         label = { Text(text = inputType.label) },
-        colors = TextFieldDefaults.textFieldColors(
-            backgroundColor = Color.White,
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = Color.Black,
+            unfocusedContainerColor = Color.Transparent,
             focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent,
-            disabledIndicatorColor = Color.Transparent
+            disabledIndicatorColor = Color.Transparent,
         ),
         shape = RoundedCornerShape(32.dp),
         keyboardOptions = inputType.keyboardOptions,

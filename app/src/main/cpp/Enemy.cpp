@@ -54,16 +54,30 @@ bool Enemy::updateEnemy(float playerPosition) {
         float playerY = m_screenHeight - 20.0f;
 //        __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, "This is a debug log with value playerX: %f", playerX);
 //        __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, "This is a debug log with value playerY: %f", playerY);
-        if(m_positionY[i] + m_velocity >= m_screenHeight - 400.0f) {
+
+//      check collision
+        if (m_positionY[i] <= m_screenHeight - 200.0f &&
+            m_positionY[i] >= m_screenHeight - 400.0f) {
             float dx = m_positionX[i] - playerX;
             float dy = m_positionY[i] - playerY;
             float distance = std::sqrt(dx * dx + dy * dy);
-           // __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, "This is a debug log with value playerY: %f", distance);
-            bool collision = distance < 150.0f;
+            // __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, "This is a debug log with value playerY: %f", distance);
+            bool collision = distance < 220.0f; // size of enemy 20 + player 200
+            if (collision) {
+                return collision;
+            }
+        }
+        if (m_positionY[i] >= m_screenHeight - 200.0f) {
+            float dx = m_positionX[i] - playerX;
+            float dy = m_positionY[i] - playerY;
+            float distance = std::sqrt(dx * dx + dy * dy);
+            // __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, "This is a debug log with value playerY: %f", distance);
+            bool collision = distance < 70.0f;// size of enemy 20 + player 50
             if(collision) {
                 return collision;
             }
         }
+
         if (m_positionY[i] + m_velocity < m_screenHeight) {
             m_positionY[i] += m_velocity;
 

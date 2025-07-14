@@ -25,6 +25,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.rounded.Menu
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AlertDialogDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.FloatingActionButton
@@ -32,26 +44,13 @@ import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.rounded.Menu
-import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material3.rememberDrawerState
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AlertDialogDefaults
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -69,6 +68,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -78,6 +78,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.mychatroom.R
 import com.example.mychatroom.data.Results
@@ -88,9 +89,9 @@ import com.example.mychatroom.navigate.bottomNavigator
 import com.example.mychatroom.navigate.screensInDrawer
 import com.example.mychatroom.session.SessionManager
 import com.example.mychatroom.session.SettingManager
-import com.example.mychatroom.ui.theme.DEFAULT_PADDING
 import com.example.mychatroom.times
 import com.example.mychatroom.transform
+import com.example.mychatroom.ui.theme.DEFAULT_PADDING
 import com.example.mychatroom.ui.theme.MyChatRoomTheme
 import com.example.mychatroom.viewModel.AuthViewModel
 import kotlinx.coroutines.launch
@@ -197,6 +198,9 @@ fun MainScreen(
     val isLoggedIn = (authResult as? Results.Success)?.data?.first == true
     val startDestination = if (isLoggedIn) Screen.HomeScreen.route else Screen.LoginScreen.route
     val loading by authViewModel.isLoading.observeAsState(initial = true)
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
     LaunchedEffect(Unit) {
         authViewModel.checkLoginSession()
     }
@@ -260,7 +264,7 @@ fun MainScreen(
                         )
                     }
                 }
-                if (isLoggedIn) {
+                if (isLoggedIn && currentRoute == Screen.HomeScreen.route) {
                     BottomAppBar(
                         navController,
                         renderEffect,
@@ -410,6 +414,7 @@ fun CustomBottomNavigation() {
 
 @Composable
 fun FabGroup(
+    navController: NavHostController? = null,
     animationProgress: Float = 0f,
     renderEffect: androidx.compose.ui.graphics.RenderEffect? = null,
     toggleAnimation: () -> Unit = { }
@@ -445,14 +450,17 @@ fun FabGroup(
         )
 
         AnimatedFab(
-            icon = Icons.Default.ShoppingCart,
+            painter = painterResource(R.drawable.ic_takephoto),
             modifier = Modifier.padding(
                 PaddingValues(
                     bottom = 72.dp,
                     start = 210.dp
                 ) * FastOutSlowInEasing.transform(0.2f, 1.0f, animationProgress)
             ),
-            opacity = LinearEasing.transform(0.4f, 0.9f, animationProgress)
+            opacity = LinearEasing.transform(0.4f, 0.9f, animationProgress),
+            onClick = {
+                navController?.navigate(Screen.CameraScreen.route)
+            }
         )
 
         AnimatedFab(
@@ -477,6 +485,7 @@ fun FabGroup(
 fun AnimatedFab(
     modifier: Modifier,
     icon: ImageVector? = null,
+    painter: Painter? = null,
     opacity: Float = 1f,
     backgroundColor: Color = MaterialTheme.colorScheme.secondary,
     onClick: () -> Unit = {}
@@ -487,12 +496,22 @@ fun AnimatedFab(
         shape = CircleShape,
         modifier = modifier.scale(1.25f)
     ) {
-        icon?.let {
-            Icon(
-                imageVector = it,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = opacity)
-            )
+        when {
+            icon != null -> {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = opacity)
+                )
+            }
+
+            painter != null -> {
+                Icon(
+                    painter = painter,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = opacity)
+                )
+            }
         }
     }
 }
@@ -590,6 +609,7 @@ fun BottomAppBar(
 
         FabGroup(renderEffect = renderEffect, animationProgress = fabAnimationProgress)
         FabGroup(
+            navController = navController,
             renderEffect = null,
             animationProgress = fabAnimationProgress,
             toggleAnimation = toggleAnimation

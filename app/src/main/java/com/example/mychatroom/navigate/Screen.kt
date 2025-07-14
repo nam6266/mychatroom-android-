@@ -14,6 +14,7 @@ sealed class Screen(val route: String) {
     object SavedScreen : Screen("savedscreen")
     object LocationScreen : Screen("locationscreen")
     object GameScreen : Screen("gamescreen")
+    object CameraScreen : Screen("camerascreen")
 }
 
 sealed class DrawerScreen(val dTitle: String, val dRoute: String, @DrawableRes val icon: Int) {

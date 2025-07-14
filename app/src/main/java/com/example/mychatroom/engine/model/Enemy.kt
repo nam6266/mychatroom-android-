@@ -1,11 +1,7 @@
 package com.example.mychatroom.engine.model
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.IntSize
 
 class Enemy(color : Color, size : Float, initialPosition: Offset) {
     private val color: Color = color

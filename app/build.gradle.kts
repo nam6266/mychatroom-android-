@@ -60,7 +60,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-test-manifest:1.8.3")
     implementation ("androidx.test.ext:junit:1.1.5")
     implementation ("androidx.test.espresso:espresso-core:3.5.1")
-
+    implementation(libs.zxing.core)
     implementation(libs.coil.compose)
     implementation(libs.firebase.storage.ktx.v2050)
     implementation(libs.androidx.material)

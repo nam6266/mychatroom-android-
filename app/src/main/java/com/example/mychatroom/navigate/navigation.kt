@@ -11,6 +11,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.mychatroom.screen.CameraCaptureScreen
 import com.example.mychatroom.screen.ChatRoomListScreen
 import com.example.mychatroom.screen.ChatScreen
 import com.example.mychatroom.screen.GameScreen
@@ -102,5 +103,9 @@ fun NavigationGraph(
         composable(Screen.GameScreen.route) {
             GameScreen()
         }
+        composable(Screen.CameraScreen.route) {
+            CameraCaptureScreen()
+        }
+
     }
 }
