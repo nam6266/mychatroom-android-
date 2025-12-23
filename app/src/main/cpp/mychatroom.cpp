@@ -12,7 +12,7 @@ float yVelocity = 5.0f;
 int z = 0;
 
 Player player = Player(1080.0f);
-Enemy enemy = Enemy(200);
+Enemy enemy = Enemy(20);
 
 bool checkColsion();
 

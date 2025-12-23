@@ -59,6 +59,12 @@ sealed class DrawerScreen(val dTitle: String, val dRoute: String, @DrawableRes v
         "logout",
         R.drawable.ic_logout
     )
+
+    object CameraScreen : DrawerScreen(
+        "Camerascreen",
+        "camerascreen",
+        R.drawable.ic_takephoto
+    )
 }
 
 val screensInDrawer = listOf(
@@ -68,6 +74,12 @@ val screensInDrawer = listOf(
     DrawerScreen.Location,
     DrawerScreen.Game,
     DrawerScreen.Logout
+)
+
+val fabNavigator = listOf(
+    DrawerScreen.Home,
+    DrawerScreen.Message,
+    DrawerScreen.CameraScreen
 )
 
 val bottomNavigator = listOf(

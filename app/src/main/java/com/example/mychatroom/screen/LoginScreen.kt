@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -68,6 +69,7 @@ import com.example.mychatroom.data.Results
 import com.example.mychatroom.data.User
 import com.example.mychatroom.session.SessionManager
 import com.example.mychatroom.viewModel.AuthViewModel
+import com.example.mychatroom.welcome.FloatingElements
 import com.google.accompanist.insets.ProvideWindowInsets
 import com.google.accompanist.insets.navigationBarsWithImePadding
 import com.google.android.exoplayer2.ExoPlayer
@@ -117,6 +119,10 @@ fun LoginScreen(
     val transitionProgress = remember { Animatable(0f) }
     var isLogin by remember { mutableStateOf(true) }
 
+    AndroidView(
+        factory = { it.buildPlayerView(exoPlayer) },
+        modifier = Modifier.fillMaxSize()
+    )
     LaunchedEffect(Unit) {
         authViewModel.clearLoginResult()
     }
@@ -153,10 +159,7 @@ fun LoginScreen(
         }
     }
 
-    AndroidView(
-        factory = { it.buildPlayerView(exoPlayer) },
-        modifier = Modifier.fillMaxSize()
-    )
+
 
     DisposableEffect(Unit) {
         onDispose {
@@ -167,16 +170,12 @@ fun LoginScreen(
         Column(
             Modifier
                 .navigationBarsWithImePadding()
-
                 .fillMaxSize()
                 .onSizeChanged {
-                    intSize -> screenWidthPx = intSize.width.toFloat()
-                    Log.d("myapp","screenWidthPx : $screenWidthPx")
-                               },
+                    intSize -> screenWidthPx = intSize.width.toFloat()},
             verticalArrangement = Arrangement.spacedBy(16.dp, alignment = Alignment.Bottom),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             Box() {
                 // login section
                 Column(
@@ -600,6 +599,7 @@ fun TextInput(
             unfocusedIndicatorColor = Color.Transparent,
             disabledIndicatorColor = Color.Transparent,
         ),
+        textStyle = TextStyle(color = Color.White),
         shape = RoundedCornerShape(32.dp),
         keyboardOptions = inputType.keyboardOptions,
         visualTransformation = inputType.visualTransformation,

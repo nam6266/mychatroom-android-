@@ -8,7 +8,6 @@
 #include <iostream>
 #include <random>
 
-static int enemyCreated = 0;
 static int spawnRate = 20;
 class Enemy {
 
@@ -24,6 +23,7 @@ private:
     float m_velocity;
     int m_spawn;
     size_t m_enemyNumber;
+    size_t m_enemyCreated;
     std::random_device m_rd;
 public:
     void setVelocity(float velocity);

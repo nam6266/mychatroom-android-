@@ -1,6 +1,11 @@
 package com.example.mychatroom.screen
 
+import android.content.Intent
 import android.os.Build
+import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -23,6 +28,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
@@ -31,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
@@ -38,6 +45,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mychatroom.R
 import com.example.mychatroom.data.Message
+import com.example.mychatroom.servies.ChatService
+import com.example.mychatroom.servies.NotificationPermissionManager
 import com.example.mychatroom.session.SessionManager
 import com.example.mychatroom.viewModel.ChatViewModel
 import java.time.Instant
@@ -56,6 +65,7 @@ fun ChatScreen(
     chatViewModel: ChatViewModel = viewModel(),
 
     ) {
+
     val messages by chatViewModel.message.observeAsState(emptyList())
     chatViewModel.setRoomId(roomId)
     val text = remember { mutableStateOf("") }

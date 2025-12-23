@@ -1,10 +1,15 @@
 package com.example.mychatroom.screen
 
+import android.content.Intent
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
+import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -12,6 +17,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -70,6 +77,7 @@ import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -86,7 +94,10 @@ import com.example.mychatroom.navigate.DrawerScreen
 import com.example.mychatroom.navigate.NavigationGraph
 import com.example.mychatroom.navigate.Screen
 import com.example.mychatroom.navigate.bottomNavigator
+import com.example.mychatroom.navigate.fabNavigator
 import com.example.mychatroom.navigate.screensInDrawer
+import com.example.mychatroom.servies.ChatService
+import com.example.mychatroom.servies.NotificationPermissionManager
 import com.example.mychatroom.session.SessionManager
 import com.example.mychatroom.session.SettingManager
 import com.example.mychatroom.times
@@ -94,6 +105,7 @@ import com.example.mychatroom.transform
 import com.example.mychatroom.ui.theme.DEFAULT_PADDING
 import com.example.mychatroom.ui.theme.MyChatRoomTheme
 import com.example.mychatroom.viewModel.AuthViewModel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.sin
@@ -122,13 +134,30 @@ private fun getRenderEffect(): RenderEffect {
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun MainScreen() {
+fun Main() {
+    val context = LocalContext.current
+    val permissionManager = remember { NotificationPermissionManager(context) }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (!isGranted) {
+            Toast.makeText(context, "Notification permission denied.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+
+        permissionManager.requestPermissionIfRequired(permissionLauncher)
+        val serviceIntent = Intent(context, ChatService::class.java).apply {
+        }
+        context.startService(serviceIntent)
+    }
     val isMenuExtended = remember { mutableStateOf(false) }
 
     val fabAnimationProgress by animateFloatAsState(
         targetValue = if (isMenuExtended.value) 1f else 0f,
         animationSpec = tween(
-            durationMillis = 1000,
+            durationMillis = 600,
             easing = LinearEasing
         )
     )
@@ -148,7 +177,6 @@ fun MainScreen() {
     }
     val navController = rememberNavController()
     val authViewModel: AuthViewModel = viewModel()
-    val context = LocalContext.current
     val sessionManager = remember { SessionManager(context) }
     val settingManager = remember { SettingManager(context) }
     val themeFlow = settingManager.getThemeMode()
@@ -166,9 +194,8 @@ fun MainScreen() {
                 renderEffect = renderEffect,
                 fabAnimationProgress = fabAnimationProgress,
                 clickAnimationProgress = clickAnimationProgress,
-            ) {
-                isMenuExtended.value = isMenuExtended.value.not()
-            }
+                toggleAnimation = {isMenuExtended.value = !isMenuExtended.value }
+            )
         }
     }
 
@@ -185,9 +212,7 @@ fun MainScreen(
     fabAnimationProgress: Float = 0f,
     clickAnimationProgress: Float = 0f,
     toggleAnimation: () -> Unit = { },
-
     ) {
-
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var drawerSeleted by remember { mutableStateOf("") }
@@ -215,6 +240,7 @@ fun MainScreen(
     } else {
         ModalNavigationDrawer(
             drawerState = drawerState,
+            gesturesEnabled = false,
             drawerContent = {
                 ModalDrawerSheet {
                     Spacer(Modifier.height(12.dp))
@@ -412,6 +438,9 @@ fun CustomBottomNavigation() {
     }
 }
 
+
+
+
 @Composable
 fun FabGroup(
     navController: NavHostController? = null,
@@ -419,6 +448,37 @@ fun FabGroup(
     renderEffect: androidx.compose.ui.graphics.RenderEffect? = null,
     toggleAnimation: () -> Unit = { }
 ) {
+    // temproal fix for dynamic padding, will update later
+    val paddings = fabNavigator.mapIndexed { index, _ ->
+        val baseBottom = 100
+
+        val size = fabNavigator.size
+        val middle = size / 2
+
+        val distance = kotlin.math.abs(index - middle)
+
+
+        val currentBottom = baseBottom - (distance * (baseBottom / middle)) + 40
+        val currentSide = distance * (200 / middle)
+
+        when {
+            size % 2 == 1 && index == middle -> {
+                // Odd size → true middle element
+                PaddingValues(bottom = baseBottom.dp)
+            }
+            index >= middle -> {
+                // Left side
+                PaddingValues(bottom = currentBottom.dp, start = currentSide.dp)
+            }
+            else -> {
+                // Right side
+                PaddingValues(bottom = currentBottom.dp, end = currentSide.dp)
+
+            }
+        }
+
+    }
+
     Box(
         Modifier
             .fillMaxSize()
@@ -427,55 +487,60 @@ fun FabGroup(
         contentAlignment = Alignment.BottomCenter
     ) {
 
-        AnimatedFab(
-            icon = Icons.Default.Settings,
-            modifier = Modifier
-                .padding(
-                    PaddingValues(
-                        bottom = 72.dp,
-                        end = 210.dp
-                    ) * FastOutSlowInEasing.transform(0f, 0.8f, animationProgress)
+        fabNavigator.forEachIndexed { index, item ->
+            AnimatedFab(
+                icon = item.icon,
+                modifier = Modifier.padding(paddings[index] * FastOutSlowInEasing.transform(0f, 0.8f, animationProgress)
                 ),
-            opacity = LinearEasing.transform(0.2f, 0.7f, animationProgress)
-        )
+                opacity = LinearEasing.transform(0.2f, 0.7f, animationProgress),
+                onClick = { navController?.navigate(item.dRoute)}
+            )
+        }
+
+//        AnimatedFab(
+//            icon = Icons.Default.Settings,
+//            modifier = Modifier
+//                .padding(paddings[index] * FastOutSlowInEasing.transform(0f, 0.8f, animationProgress)
+//                ),
+//            opacity = LinearEasing.transform(0.2f, 0.7f, animationProgress)
+//        )
+//
+//        AnimatedFab(
+//            icon = Icons.Default.Build,
+//            modifier = Modifier
+//                .padding(
+//                PaddingValues(
+//                    bottom = 100.dp,
+//                ) * FastOutSlowInEasing.transform(0.1f, 0.9f, animationProgress)
+//            ),
+//            opacity = LinearEasing.transform(0.3f, 0.8f, animationProgress)
+//        )
+//
+//        AnimatedFab(
+//            painter = painterResource(R.drawable.ic_takephoto),
+//            modifier = Modifier.padding(
+//                PaddingValues(
+//                    bottom = 72.dp,
+//                    start = 210.dp
+//                ) * FastOutSlowInEasing.transform(0.2f, 1.0f, animationProgress)
+//            ),
+//            opacity = LinearEasing.transform(0.4f, 0.9f, animationProgress),
+//            onClick = {
+//                navController?.navigate(Screen.CameraScreen.route)
+//            }
+//        )
+
+
 
         AnimatedFab(
-            icon = Icons.Default.Build,
-            modifier = Modifier.padding(
-                PaddingValues(
-                    bottom = 104.dp,
-                ) * FastOutSlowInEasing.transform(0.1f, 0.9f, animationProgress)
-            ),
-            opacity = LinearEasing.transform(0.3f, 0.8f, animationProgress)
-        )
-
-        AnimatedFab(
-            painter = painterResource(R.drawable.ic_takephoto),
-            modifier = Modifier.padding(
-                PaddingValues(
-                    bottom = 72.dp,
-                    start = 210.dp
-                ) * FastOutSlowInEasing.transform(0.2f, 1.0f, animationProgress)
-            ),
-            opacity = LinearEasing.transform(0.4f, 0.9f, animationProgress),
-            onClick = {
-                navController?.navigate(Screen.CameraScreen.route)
-            }
-        )
-
-        AnimatedFab(
-            modifier = Modifier
-                .scale(1f - LinearEasing.transform(0.5f, 0.85f, animationProgress)),
-        )
-
-        AnimatedFab(
-            icon = Icons.Default.Add,
+            painter = Icons.Default.Add,
             modifier = Modifier
                 .rotate(
                     225 * FastOutSlowInEasing
                         .transform(0.35f, 0.65f, animationProgress)
                 ),
             onClick = toggleAnimation,
+            // onClick = { Log.d("namlog", "padding : $paddings") },
             backgroundColor = Color.Transparent
         )
     }
@@ -484,8 +549,8 @@ fun FabGroup(
 @Composable
 fun AnimatedFab(
     modifier: Modifier,
-    icon: ImageVector? = null,
-    painter: Painter? = null,
+    icon: Int? = null,
+    painter: ImageVector? = null,
     opacity: Float = 1f,
     backgroundColor: Color = MaterialTheme.colorScheme.secondary,
     onClick: () -> Unit = {}
@@ -499,7 +564,7 @@ fun AnimatedFab(
         when {
             icon != null -> {
                 Icon(
-                    imageVector = icon,
+                    painter = painterResource(icon),
                     contentDescription = null,
                     tint = Color.White.copy(alpha = opacity)
                 )
@@ -507,7 +572,7 @@ fun AnimatedFab(
 
             painter != null -> {
                 Icon(
-                    painter = painter,
+                    imageVector  = painter,
                     contentDescription = null,
                     tint = Color.White.copy(alpha = opacity)
                 )

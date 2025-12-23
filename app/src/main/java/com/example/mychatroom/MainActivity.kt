@@ -1,5 +1,6 @@
 package com.example.mychatroom
 
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -23,90 +24,71 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.mychatroom.screen.MainScreen
+import androidx.lifecycle.lifecycleScope
+import com.example.mychatroom.anim.HeartBeatAnimation
+import com.example.mychatroom.screen.Main
+import com.example.mychatroom.splash.SplashScreenDecorator
+import com.example.mychatroom.splash.splash
+import com.example.mychatroom.ui.theme.MyChatRoomTheme
+import com.example.mychatroom.ui.theme.SplashScreenDecoratorTheme
+import com.example.mychatroom.welcome.AnimatedWelcomeScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 class MainActivity : ComponentActivity() {
+
+    var splashScreen: SplashScreenDecorator? = null
+
+
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
+
+//        showSplash()
+
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
         setContent {
-            MainScreen()
-        }
-    }
-}
-
-// this for test animation
-@Preview
-@Composable
-fun PreviewMainScreen() {
-    MainScreens()
-}
-
-
-@Composable
-fun MainScreens() {
-    val fields = listOf("Name", "Email", "Password")
-
-    val scope = rememberCoroutineScope()
-    var targetValue = 0f
-
-
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val offsetX = this.maxWidth.value
-        val offsetXAnimatables = remember {
-            fields.map { Animatable(offsetX) } // Initial offset for each field
-        }
-
-        val offsetYAnimatables = remember {
-            fields.map { Animatable(100f) }
-        }
-        Column() {
-            fields.forEachIndexed { index, label ->
-                // Get the specific Animatable for this field
-                val offsetx = offsetXAnimatables[index]
-                val offsetY = offsetYAnimatables[index]
-
-                TextField(
-                    value = "", // You'll likely want to manage state for TextField values
-                    onValueChange = {},
-                    label = { Text(label) },
-                    modifier = Modifier
-                        .width(200.dp)
-                        .graphicsLayer {
-                            this.translationX = offsetx.value
-                            this.translationY = offsetY.value
-                        }
-                )
-            }
-            Button(onClick = {
-                // 3. Launch animations for each TextField within the CoroutineScope
-                offsetXAnimatables.forEachIndexed { index, animatable ->
-                    scope.launch {
-                        // Reset to initial position before animating in (optional, if you want to re-run it)
-                        // animatable.snapTo(300f) // Uncomment if you want them to jump out then slide in again
-                        delay(100L * index) // Staggered animation delay
-
-                        Log.d("myapp", "animatable : ${animatable.label}")
-                        Log.d("myapp", "animatable : ${animatable.value}")
-                        Log.d("myapp", "offsetXAnimatables : $offsetXAnimatables")
-                        if (animatable.value == offsetX) {
-                            targetValue = 0f
-                        } else {
-                            targetValue = offsetX
-                        }
-                        animatable.animateTo(
-                            targetValue = targetValue,
-                            animationSpec = tween(durationMillis = 500)
-                        )
-                    }
-                }
-            }) {
-                Text("Submit")
+            SplashScreenDecoratorTheme {
+                Main()
             }
         }
 
+//        lifecycleScope.launch {
+//            // delay os splash screen
+//            delay(1.seconds)
+//            splashScreen?.shouldKeepOnScreen = false
+//            // delay custom splash screen
+//            delay(3.seconds)
+//            splashScreen?.dismiss()
+//        }
+//    }
+
+//    private fun showSplash() {
+//
+//        val exitDuration = 800L
+//        val fadeDurationOffset = 200L
+//
+//        splashScreen = splash {
+//            content {
+//                exitAnimationDuration = exitDuration
+//                composeViewFadeDurationOffset = fadeDurationOffset
+//                SplashScreenDecoratorTheme {
+//                    HeartBeatAnimation(
+//                        isVisible = isVisible.value,
+//                        exitAnimationDuration = exitAnimationDuration.milliseconds,
+//                        onStartExitAnimation = { startExitAnimation() }
+//                    )
+//                }
+//            }
+//        }
+//    }
+//
+//    override fun onDestroy() {
+//        splashScreen = null
+//        super.onDestroy()
+//    }
     }
 }
