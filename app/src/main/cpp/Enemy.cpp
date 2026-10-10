@@ -3,109 +3,94 @@
 //
 
 #include "Enemy.h"
-#include <android/log.h>
+#include <algorithm>
 
-#define LOG_TAG "namLog"
-
-
-Enemy::Enemy(size_t count):m_size(20.0f),m_velocity(10.0f),m_enemyNumber(count),m_enemyCreated(0), m_spawn{spawnRate} {
-    m_positionX.resize(count);
-    m_positionY.resize(count);
+namespace {
+    constexpr float kSizeOfScreenWidth = 0.08f;
+    constexpr float kHitRadiusOfSize = 0.40f;
+    constexpr float kSpawnIntervalSec = 0.33f;     // was 20 frames at 60 fps
+    // Speeds are fractions of the screen height per second, so the game
+    // feels the same on every screen size and at any tick rate.
+    constexpr float kStartSpeedOfHeight = 0.45f;
+    constexpr float kSpeedGainOfHeight = 0.015f;   // per second of play
+    constexpr float kMaxSpeedOfHeight = 1.20f;
 }
 
+Enemy::Enemy(std::size_t maxCount) : m_enemies(maxCount) {}
 
-Enemy::~Enemy() {
-
-}
-
-void Enemy::setVelocity(float velocity) {
-    m_velocity = velocity;
-}
-
-void Enemy::setScreen(float width, float height) {
-    m_screenWidth = width;
-    m_screenHeight = height;
-}
-
-bool Enemy::updateEnemy(float playerPosition) {
-
-    std::mt19937 gen(m_rd());
-    if (m_enemyCreated < m_enemyNumber) {
-        m_spawn++;
+void Enemy::reset(float screenWidth, float screenHeight) {
+    m_screenWidth = screenWidth;
+    m_screenHeight = screenHeight;
+    m_size = screenWidth * kSizeOfScreenWidth;
+    m_speed = screenHeight * kStartSpeedOfHeight;
+    m_spawnTimer = 0.0f;
+    for (auto &enemy : m_enemies) {
+        enemy = EnemyState{};
     }
+}
 
-    if (m_enemyCreated < m_enemyNumber && m_spawn >= spawnRate) {
-        m_enemyCreated++;
-
-        int numColumns = 50;
-        float columnWidth = static_cast<float>(m_screenWidth) / numColumns;
-
-        std::uniform_int_distribution<> distr(0, numColumns - 1);
-        int columnIndex = distr(gen);
-
-        m_positionX[m_enemyCreated] = columnWidth * columnIndex + columnWidth / 2;
-        m_positionY[m_enemyCreated] = 100.0f;
-
-        m_spawn = 0; // reset spawn counter
+void Enemy::beginTick() {
+    for (auto &enemy : m_enemies) {
+        enemy.prevX = enemy.x;
+        enemy.prevY = enemy.y;
     }
+}
 
-    size_t i = 0;
-    while(i < m_enemyCreated) {
-        float playerX = playerPosition;
-        float playerY = m_screenHeight - 20.0f;
-//        __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, "This is a debug log with value playerX: %f", playerX);
-//        __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, "This is a debug log with value playerY: %f", playerY);
+int Enemy::update(float dt, std::mt19937 &rng) {
+    m_speed = std::min(m_speed + m_screenHeight * kSpeedGainOfHeight * dt,
+                       m_screenHeight * kMaxSpeedOfHeight);
 
-//      check collision
-        if (m_positionY[i] <= m_screenHeight - 200.0f &&
-            m_positionY[i] >= m_screenHeight - 400.0f) {
-            float dx = m_positionX[i] - playerX;
-            float dy = m_positionY[i] - playerY;
-            float distance = std::sqrt(dx * dx + dy * dy);
-            // __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, "This is a debug log with value playerY: %f", distance);
-            bool collision = distance < 220.0f; // size of enemy 20 + player 200
-            if (collision) {
-                return collision;
-            }
-        }
-        if (m_positionY[i] >= m_screenHeight - 200.0f) {
-            float dx = m_positionX[i] - playerX;
-            float dy = m_positionY[i] - playerY;
-            float distance = std::sqrt(dx * dx + dy * dy);
-            // __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, "This is a debug log with value playerY: %f", distance);
-            bool collision = distance < 70.0f;// size of enemy 20 + player 50
-            if(collision) {
-                return collision;
-            }
-        }
-
-        if (m_positionY[i] + m_velocity < m_screenHeight) {
-            m_positionY[i] += m_velocity;
+    m_spawnTimer += dt;
+    if (m_spawnTimer >= kSpawnIntervalSec) {
+        if (EnemyState *slot = findInactive()) {
+            spawn(*slot, rng);
+            m_spawnTimer = 0.0f;
         } else {
-            int numColumns = 50;
-            float columnWidth = static_cast<float>(m_screenWidth) / numColumns;
-
-            std::uniform_int_distribution<> distr(0, numColumns - 1);
-            int columnIndex = distr(gen);
-
-            m_positionX[i] = columnWidth * columnIndex + columnWidth / 2;
-            m_positionY[i] = 100.0f;
+            // Pool is full: spawn as soon as a slot frees up.
+            m_spawnTimer = kSpawnIntervalSec;
         }
-        i++;
+    }
+
+    int dodged = 0;
+    const float half = m_size * 0.5f;
+    for (auto &enemy : m_enemies) {
+        if (!enemy.active) continue;
+        enemy.y += m_speed * dt;
+        if (enemy.y - half > m_screenHeight) {
+            enemy.active = false;
+            ++dodged;
+        }
+    }
+    return dodged;
+}
+
+bool Enemy::collidesWith(float x, float y, float radius) const {
+    const float hitDistance = radius + m_size * kHitRadiusOfSize;
+    const float hitDistanceSq = hitDistance * hitDistance;
+    for (const auto &enemy : m_enemies) {
+        if (!enemy.active) continue;
+        const float dx = enemy.x - x;
+        const float dy = enemy.y - y;
+        if (dx * dx + dy * dy < hitDistanceSq) {
+            return true;
+        }
     }
     return false;
 }
 
-size_t Enemy::getEnemyNumber() {
-    return m_enemyNumber;
+EnemyState *Enemy::findInactive() {
+    for (auto &enemy : m_enemies) {
+        if (!enemy.active) return &enemy;
+    }
+    return nullptr;
 }
 
-float Enemy::getEnemyPositionx(int index) {
-    return m_positionX[index];
+void Enemy::spawn(EnemyState &enemy, std::mt19937 &rng) const {
+    const float half = m_size * 0.5f;
+    std::uniform_real_distribution<float> column(half, std::max(half, m_screenWidth - half));
+    enemy.x = column(rng);
+    enemy.y = -half;          // just above the top edge, slides in
+    enemy.prevX = enemy.x;    // no interpolation streak from the old position
+    enemy.prevY = enemy.y;
+    enemy.active = true;
 }
-
-float Enemy::getEnemyPositiony(int index) {
-    return m_positionY[index];
-}
-
-

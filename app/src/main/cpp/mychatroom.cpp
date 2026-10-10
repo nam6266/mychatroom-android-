@@ -1,78 +1,72 @@
+// JNI bridge between com.example.mychatroom.engine.GameEngine (Kotlin) and GameLoop.
+//
+// Each GameEngine owns one GameLoop through an opaque jlong handle, so every
+// new game starts fresh and nothing is kept in global variables.
+
 #include <jni.h>
-#include <android/log.h>
-#include "Player.h"
-#include "Enemy.h"
-#include <android/log.h>
+#include <vector>
+#include "GameLoop.h"
 
-
-float x = 100.0f;
-float y = 100.0f;
-float xVelocity = 5.0f;
-float yVelocity = 5.0f;
-int z = 0;
-
-Player player = Player(1080.0f);
-Enemy enemy = Enemy(20);
-
-bool checkColsion();
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_example_mychatroom_engine_GameEngine_update(JNIEnv *env, jobject thiz, jfloat newPosition) {
-    player.setPosition(newPosition);
-
-}
-
-extern "C"
-JNIEXPORT jfloat JNICALL
-Java_com_example_mychatroom_engine_GameEngine_getPosition(JNIEnv *env, jobject thiz) {
-    return player.getPosition();
-}
-
-extern "C"
-JNIEXPORT jint JNICALL
-Java_com_example_mychatroom_engine_GameEngine_getNumber(JNIEnv *env, jobject thiz) {
-    jint increas = z++;
-    return increas;
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_example_mychatroom_engine_GameEngine_setScreen(JNIEnv *env, jobject thiz, jfloat witdh, jfloat height) {
-    player.setScreen(witdh);
-    enemy.setScreen(witdh,height);
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_example_mychatroom_engine_GameEngine_setVelocity(JNIEnv *env, jobject thiz, jfloat newVelocity) {
-    player.setVelocity(newVelocity);
-}
-extern "C"
-JNIEXPORT jboolean JNICALL
-Java_com_example_mychatroom_engine_GameEngine_updateEnemy(JNIEnv *env, jobject thiz, jfloat playerPosition) {
-    return enemy.updateEnemy( playerPosition);
-}
-
-bool checkColsion() {
-    return false;
-}
-
-extern "C"
-JNIEXPORT jobjectArray JNICALL
-Java_com_example_mychatroom_engine_GameEngine_getEnemy(JNIEnv *env, jobject thiz) {
-    size_t size = enemy.getEnemyNumber();
-    jclass floatArrayClass = env->FindClass("[F"); // float[]
-
-    jobjectArray result = env->NewObjectArray(size, floatArrayClass, nullptr);
-
-    for (int i = 0; i < size; i++) {
-        jfloatArray point = env->NewFloatArray(2);
-        float values[2] = { enemy.getEnemyPositionx(i), enemy.getEnemyPositiony(i) };
-        env->SetFloatArrayRegion(point, 0, 2, values);
-        env->SetObjectArrayElement(result, i, point);
-        env->DeleteLocalRef(point);
+namespace {
+    GameLoop *loopFrom(jlong handle) {
+        return reinterpret_cast<GameLoop *>(handle);
     }
-
-    return result;
 }
+
+extern "C" {
+
+JNIEXPORT jlong JNICALL
+Java_com_example_mychatroom_engine_GameEngine_nativeCreate(JNIEnv *, jobject,
+                                                           jint ticksPerSecond, jint maxEnemies) {
+    auto *loop = new GameLoop(ticksPerSecond, static_cast<std::size_t>(maxEnemies > 0 ? maxEnemies : 1));
+    return reinterpret_cast<jlong>(loop);
+}
+
+JNIEXPORT void JNICALL
+Java_com_example_mychatroom_engine_GameEngine_nativeDestroy(JNIEnv *, jobject, jlong handle) {
+    delete loopFrom(handle);   // ~GameLoop stops and joins the logic thread
+}
+
+JNIEXPORT void JNICALL
+Java_com_example_mychatroom_engine_GameEngine_nativeStart(JNIEnv *, jobject, jlong handle) {
+    loopFrom(handle)->start();
+}
+
+JNIEXPORT void JNICALL
+Java_com_example_mychatroom_engine_GameEngine_nativeSetPaused(JNIEnv *, jobject, jlong handle,
+                                                              jboolean paused) {
+    loopFrom(handle)->setPaused(paused == JNI_TRUE);
+}
+
+JNIEXPORT void JNICALL
+Java_com_example_mychatroom_engine_GameEngine_nativeSetScreen(JNIEnv *, jobject, jlong handle,
+                                                              jfloat width, jfloat height) {
+    loopFrom(handle)->setScreen(width, height);
+}
+
+JNIEXPORT void JNICALL
+Java_com_example_mychatroom_engine_GameEngine_nativeMovePlayerBy(JNIEnv *, jobject, jlong handle,
+                                                                 jfloat dx) {
+    loopFrom(handle)->movePlayerBy(dx);
+}
+
+JNIEXPORT void JNICALL
+Java_com_example_mychatroom_engine_GameEngine_nativeRestart(JNIEnv *, jobject, jlong handle) {
+    loopFrom(handle)->restart();
+}
+
+// Fills a FloatArray the Kotlin side allocates once, so rendering a frame
+// creates no Java objects (the old getEnemy() made 21 arrays per frame).
+JNIEXPORT jint JNICALL
+Java_com_example_mychatroom_engine_GameEngine_nativeGetSnapshot(JNIEnv *env, jobject, jlong handle,
+                                                                jfloatArray out) {
+    const jsize capacity = env->GetArrayLength(out);
+    thread_local std::vector<float> scratch;
+    if (static_cast<jsize>(scratch.size()) < capacity) scratch.resize(capacity);
+
+    const int written = loopFrom(handle)->writeSnapshot(scratch.data(), capacity);
+    env->SetFloatArrayRegion(out, 0, written, scratch.data());
+    return written;
+}
+
+} // extern "C"

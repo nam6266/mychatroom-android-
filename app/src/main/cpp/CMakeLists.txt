@@ -28,9 +28,14 @@ project("mychatroom")
 add_library(${CMAKE_PROJECT_NAME} SHARED
         # List C/C++ source files with relative paths to this CMakeLists.txt.
         mychatroom.cpp
+        GameLoop.cpp
+        GameWorld.cpp
         Player.cpp
         Enemy.cpp
 )
+
+# The logic loop runs on a std::thread and uses std::clamp.
+target_compile_features(${CMAKE_PROJECT_NAME} PRIVATE cxx_std_17)
 
 # Specifies libraries CMake should link to your target library. You
 # can link libraries from various origins, such as libraries defined in this

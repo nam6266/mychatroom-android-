@@ -1,24 +1,18 @@
 package com.example.mychatroom.viewModel
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import com.example.mychatroom.engine.GameEngine
 
+/**
+ * Owns the native engine so the game survives rotation and leaving/returning
+ * to the screen, and is shut down exactly once when the screen is gone for good.
+ */
 class GameViewModel : ViewModel() {
 
-    private val _data = MutableLiveData(1)
-    val data: LiveData<Int> get() = _data
+    val engine = GameEngine(ticksPerSecond = 60).apply { start() }
 
-    fun initGame() {
-        viewModelScope.launch {
-            while (true) {
-                delay(16L)
-                _data.value = _data.value?.plus(1)
-            }
-
-        }
+    override fun onCleared() {
+        engine.close()
+        super.onCleared()
     }
 }

@@ -3,36 +3,41 @@
 //
 
 #include "Player.h"
+#include <algorithm>
 
-Player::Player(float screenLimit):m_velocity{5.0f},m_status{true},m_size{200.0f},m_screenLimit(screenLimit){
-    m_positionX = m_screenLimit/2;
+namespace {
+    constexpr float kSizeOfScreenWidth = 0.18f;     // sprite is 18% of the screen width
+    constexpr float kHitRadiusOfSize = 0.35f;       // hitbox is a bit smaller than the sprite
+    constexpr float kBottomMarginOfHeight = 0.04f;  // gap between the rocket and the bottom edge
 }
 
-Player::~Player() {
-
+void Player::reset(float screenWidth, float screenHeight) {
+    m_screenWidth = screenWidth;
+    m_size = screenWidth * kSizeOfScreenWidth;
+    m_x = screenWidth * 0.5f;
+    m_y = screenHeight - screenHeight * kBottomMarginOfHeight - m_size * 0.5f;
+    m_prevX = m_x;
 }
 
-void Player::updatePosition() {
-    float newPositon = m_positionX + m_velocity;
-    if (newPositon <= 0 || newPositon >= m_screenLimit) {
-        m_velocity = -m_velocity;
-    }
-    m_positionX += m_velocity;
+void Player::beginTick() {
+    m_prevX = m_x;
 }
 
-void Player::setScreen(float screen) {
-    m_screenLimit = screen/2;
+void Player::moveBy(float dx) {
+    m_x += dx;
+    clampToScreen();
 }
 
-float Player::getPosition() {
-    return m_positionX;
+void Player::moveTo(float x) {
+    m_x = x;
+    clampToScreen();
 }
 
-void Player::setPosition(float newPosition) {
-    m_positionX += newPosition;
+float Player::hitRadius() const {
+    return m_size * kHitRadiusOfSize;
 }
 
-void Player::setVelocity(float newVelocity) {
-    m_velocity = newVelocity;
+void Player::clampToScreen() {
+    const float half = m_size * 0.5f;
+    m_x = std::clamp(m_x, half, std::max(half, m_screenWidth - half));
 }
-
