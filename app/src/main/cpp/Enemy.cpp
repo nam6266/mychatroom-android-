@@ -6,8 +6,11 @@
 #include <algorithm>
 
 namespace {
-    constexpr float kSizeOfScreenWidth = 0.08f;
-    constexpr float kHitRadiusOfSize = 0.40f;
+    constexpr float kSizeOfScreenWidth = 0.15f;
+    // metero.png: the rock fills only ~43% of the image's width (~63% of its
+    // height, because the 534x400 image is drawn into a square). 0.22 matches
+    // the visible rock's half-width, so a hit always looks like a hit.
+    constexpr float kHitRadiusOfSize = 0.22f;
     constexpr float kSpawnIntervalSec = 0.33f;     // was 20 frames at 60 fps
     // Speeds are fractions of the screen height per second, so the game
     // feels the same on every screen size and at any tick rate.
@@ -64,14 +67,30 @@ int Enemy::update(float dt, std::mt19937 &rng) {
     return dodged;
 }
 
-bool Enemy::collidesWith(float x, float y, float radius) const {
+bool Enemy::touches(const EnemyState &enemy, float x, float yTop, float yBottom,
+                    float radius) const {
     const float hitDistance = radius + m_size * kHitRadiusOfSize;
-    const float hitDistanceSq = hitDistance * hitDistance;
+    // closest point of the segment x, [yTop, yBottom] to the meteor centre
+    const float closestY = std::clamp(enemy.y, yTop, yBottom);
+    const float dx = enemy.x - x;
+    const float dy = enemy.y - closestY;
+    return dx * dx + dy * dy < hitDistance * hitDistance;
+}
+
+bool Enemy::collidesWith(float x, float yTop, float yBottom, float radius) const {
     for (const auto &enemy : m_enemies) {
-        if (!enemy.active) continue;
-        const float dx = enemy.x - x;
-        const float dy = enemy.y - y;
-        if (dx * dx + dy * dy < hitDistanceSq) {
+        if (enemy.active && touches(enemy, x, yTop, yBottom, radius)) return true;
+    }
+    return false;
+}
+
+bool Enemy::hitBySegment(float x, float yTop, float yBottom, float radius,
+                         float *hitX, float *hitY) {
+    for (auto &enemy : m_enemies) {
+        if (enemy.active && touches(enemy, x, yTop, yBottom, radius)) {
+            enemy.active = false;   // destroyed
+            if (hitX) *hitX = enemy.x;
+            if (hitY) *hitY = enemy.y;
             return true;
         }
     }

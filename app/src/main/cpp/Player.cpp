@@ -7,7 +7,14 @@
 
 namespace {
     constexpr float kSizeOfScreenWidth = 0.18f;     // sprite is 18% of the screen width
-    constexpr float kHitRadiusOfSize = 0.35f;       // hitbox is a bit smaller than the sprite
+    // Hitbox = a capsule (vertical bar with round ends) fitted to
+    // drawable-nodpi/player_ship.webp by testing against the real pixels.
+    // The ship is wide and fills its square, so the best fit is nearly a
+    // circle. Values are fractions of m_size, from the sprite centre
+    // (negative = up). For the old thin rocket.png use 0.12 / -0.35 / 0.16.
+    constexpr float kHitRadiusOfSize = 0.46f;
+    constexpr float kHitTopOfSize = -0.10f;
+    constexpr float kHitBottomOfSize = 0.10f;
     constexpr float kBottomMarginOfHeight = 0.04f;  // gap between the rocket and the bottom edge
 }
 
@@ -35,6 +42,14 @@ void Player::moveTo(float x) {
 
 float Player::hitRadius() const {
     return m_size * kHitRadiusOfSize;
+}
+
+float Player::hitTop() const {
+    return m_y + m_size * kHitTopOfSize;
+}
+
+float Player::hitBottom() const {
+    return m_y + m_size * kHitBottomOfSize;
 }
 
 void Player::clampToScreen() {

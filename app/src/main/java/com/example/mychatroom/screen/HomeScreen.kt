@@ -1,5 +1,10 @@
 package com.example.mychatroom.screen
 
+import androidx.compose.foundation.border
+import com.example.mychatroom.ui.theme.GradientAvatar
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.foundation.layout.PaddingValues
 import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -7,13 +12,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -77,6 +80,7 @@ fun HomeScreen(
     val name by sessionManager.getFirstName().collectAsState(initial = "")
     var showDialog by remember { mutableStateOf(false) }
     val posts by homeVIewModel.post.observeAsState(initial = emptyList())
+    val isPosting by homeVIewModel.isPosting.observeAsState(initial = false)
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
 
     Column(
@@ -86,24 +90,26 @@ fun HomeScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(start = 12.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onProfileClick) {
-                Icon(
-                    imageVector = Icons.Rounded.AccountCircle,
-                    contentDescription = "Profile",
-                    tint = MaterialTheme.colorScheme.onBackground
-                )
-            }
+            GradientAvatar(
+                name = name ?: "",
+                size = 40.dp,
+                modifier = Modifier.clickable(onClick = onProfileClick)
+            )
             BasicTextField(
                 value = text,
                 onValueChange = { text = it },
-                textStyle = TextStyle(fontSize = 16.sp, color = Color.White),
+                textStyle = TextStyle(fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface),
                 enabled = false,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(8.dp)
-                    .background(Color.DarkGray, shape = RoundedCornerShape(20.dp))
-                    .padding(horizontal = 12.dp, vertical = 10.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(24.dp))
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
                     .clickable { showDialog = true },
                 decorationBox = { innerTextField ->
                     Box(
@@ -112,8 +118,8 @@ fun HomeScreen(
                     ) {
                         if (text.isEmpty()) {
                             Text(
-                                text = "Hi ${name}, what are you thinking today",
-                                color = Color.Gray,
+                                text = "What's on your mind, ${name ?: "friend"}?",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 16.sp,
                                 modifier = Modifier.align(Alignment.CenterStart)
                             )
@@ -132,9 +138,20 @@ fun HomeScreen(
             Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .fillMaxWidth(),
+                    // leave room so the last post isn't hidden behind the bottom bar
+                    contentPadding = PaddingValues(bottom = 140.dp)
                 ) {
-                    items(posts) { post ->
+                    if (isPosting) {
+                        item {
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 12.dp)
+                            )
+                        }
+                    }
+                    items(posts, key = { it.id }) { post ->
                         PostItem(post)
                     }
                 }
@@ -146,7 +163,6 @@ fun HomeScreen(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .fillMaxHeight(0.6f)
                         .padding(16.dp),
                     shape = RoundedCornerShape(16.dp),
                     color = MaterialTheme.colorScheme.surface,
@@ -165,47 +181,55 @@ fun HomeScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(150.dp)
-                                .background(
-                                    Color.LightGray.copy(alpha = 0.2f),
-                                    RoundedCornerShape(10.dp)
-                                ),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            BasicTextField(
-                                value = text,
-                                onValueChange = { text = it },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(8.dp)
-                            )
+                        OutlinedTextField(
+                            value = text,
+                            onValueChange = { text = it },
+                            placeholder = { Text("What's on your mind?") },
+                            minLines = 3,
+                            maxLines = 6,
+                            modifier = Modifier.fillMaxWidth()
+                        )
 
-                            selectedImageUri?.let { uri ->
+                        selectedImageUri?.let { uri ->
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Box {
                                 AsyncImage(
                                     model = uri,
                                     contentDescription = "Selected Image",
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier
                                         .fillMaxWidth()
+                                        .height(160.dp)
+                                        .clip(RoundedCornerShape(10.dp))
                                 )
+                                IconButton(
+                                    onClick = { selectedImageUri = null },
+                                    modifier = Modifier.align(Alignment.TopEnd)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = "Remove image",
+                                        tint = Color.White
+                                    )
+                                }
                             }
                         }
-                        Spacer(modifier = Modifier.height(24.dp))
+
+                        Spacer(modifier = Modifier.height(16.dp))
 
                         ImagePicker(onImagePicked = { uri ->
                             selectedImageUri = uri
                         })
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
                         Button(
                             modifier = Modifier.fillMaxWidth(),
+                            enabled = text.isNotBlank() || selectedImageUri != null,
                             onClick = {
-                                name?.let { homeVIewModel.addPost(selectedImageUri, text, it) }
+                                homeVIewModel.addPost(selectedImageUri, text, name ?: "")
                                 text = ""
+                                selectedImageUri = null
                                 showDialog = false
                             }
                         ) {
@@ -261,24 +285,18 @@ fun PostItem(post: Post) {
     Card(
         modifier = Modifier
             .fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(6.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.onBackground)
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
+        )
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            val isDarkTheme = isSystemInDarkTheme()
-            val iconColor = if (isDarkTheme) Color.White else Color.Black
+            val iconColor = MaterialTheme.colorScheme.onSurface
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.AccountCircle,
-                    contentDescription = "User",
-                    tint = iconColor,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                )
+                GradientAvatar(name = post.posterFistName, size = 44.dp)
 
                 Spacer(modifier = Modifier.width(8.dp))
 
@@ -292,7 +310,7 @@ fun PostItem(post: Post) {
                     Text(
                         text = formatTimestamp(post.timestamp),
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -308,15 +326,17 @@ fun PostItem(post: Post) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Post image
-            AsyncImage(
-                model = post.postImgUrl,
-                contentDescription = "Post Image",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-            )
+            // Post image (text-only posts have none)
+            if (!post.postImgUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = post.postImgUrl,
+                    contentDescription = "Post Image",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                )
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -335,13 +355,13 @@ fun PostItem(post: Post) {
                     Icon(
                         imageVector = if (postLiked) Icons.Default.ThumbUp else Icons.Default.ThumbUp,
                         contentDescription = "Like",
-                        tint = if (postLiked) Color.Blue else Color.Gray,
+                        tint = if (postLiked) MaterialTheme.colorScheme.primary else Color.Gray,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = if (postLiked) "Liked" else "Like",
-                        color = if (postLiked) Color.Blue else Color.Gray,
+                        color = if (postLiked) MaterialTheme.colorScheme.primary else Color.Gray,
                         fontSize = 14.sp
                     )
                 }

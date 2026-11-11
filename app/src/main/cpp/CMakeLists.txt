@@ -32,6 +32,10 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         GameWorld.cpp
         Player.cpp
         Enemy.cpp
+        Bullet.cpp
+        PowerUp.cpp
+        Explosion.cpp
+        Alien.cpp
 )
 
 # The logic loop runs on a std::thread and uses std::clamp.

@@ -13,12 +13,20 @@ package com.example.mychatroom.engine
 class GameEngine(
     ticksPerSecond: Int = 60,
     val maxEnemies: Int = 20,
+    // Level 3 fires 3 bullets per volley with ~5 volleys on screen at once.
+    val maxBullets: Int = 24,
+    val maxPowerUps: Int = 4,
+    val maxExplosions: Int = 16,
+    val maxAliens: Int = 4,
+    val maxAlienBlasts: Int = 6,
 ) : AutoCloseable {
 
-    private var handle: Long = nativeCreate(ticksPerSecond, maxEnemies)
+    private var handle: Long = nativeCreate(
+        ticksPerSecond, maxEnemies, maxBullets, maxPowerUps, maxExplosions, maxAliens, maxAlienBlasts,
+    )
 
     /** Reused every frame, so rendering allocates nothing. */
-    val frame = GameFrame(maxEnemies)
+    val frame = GameFrame(maxEnemies, maxBullets, maxPowerUps, maxExplosions, maxAliens, maxAlienBlasts)
 
     fun start() = withHandle { nativeStart(it) }
 
@@ -51,7 +59,15 @@ class GameEngine(
         if (h != 0L) block(h)
     }
 
-    private external fun nativeCreate(ticksPerSecond: Int, maxEnemies: Int): Long
+    private external fun nativeCreate(
+        ticksPerSecond: Int,
+        maxEnemies: Int,
+        maxBullets: Int,
+        maxPowerUps: Int,
+        maxExplosions: Int,
+        maxAliens: Int,
+        maxAlienBlasts: Int,
+    ): Long
     private external fun nativeDestroy(handle: Long)
     private external fun nativeStart(handle: Long)
     private external fun nativeSetPaused(handle: Long, paused: Boolean)
@@ -69,11 +85,23 @@ class GameEngine(
 
 /**
  * One frame of game state. Layout matches GameLoop::writeSnapshot in C++:
- * [state, score, playerX, playerY, playerSize, enemySize, enemyCount, x0, y0, x1, y1, ...]
+ * [state, score, playerX, playerY, playerSize, enemySize, enemyCount, bulletSize, bulletCount,
+ *  powerUpSize, powerUpCount, weaponLevel,
+ *  enemy x,y ..., bullet x,y ..., power-up x,y ...]
  * Positions are sprite centres in pixels.
  */
-class GameFrame(maxEnemies: Int) {
-    internal val data = FloatArray(HEADER_SIZE + maxEnemies * 2)
+class GameFrame(
+    maxEnemies: Int,
+    maxBullets: Int,
+    maxPowerUps: Int,
+    maxExplosions: Int,
+    maxAliens: Int,
+    maxAlienBlasts: Int,
+) {
+    internal val data = FloatArray(
+        HEADER_SIZE + (maxEnemies + maxBullets + maxPowerUps) * 2 + maxExplosions * 4 +
+            maxAliens * 4 + maxAlienBlasts * 4
+    )
     internal var length = 0
 
     val state: Int get() = data[0].toInt()
@@ -85,6 +113,17 @@ class GameFrame(maxEnemies: Int) {
     val playerSize: Float get() = data[4]
     val enemySize: Float get() = data[5]
     val enemyCount: Int get() = if (length > 0) data[6].toInt() else 0
+    val bulletSize: Float get() = data[7]
+    val bulletCount: Int get() = if (length > 0) data[8].toInt() else 0
+    val powerUpSize: Float get() = data[9]
+    val powerUpCount: Int get() = if (length > 0) data[10].toInt() else 0
+    val weaponLevel: Int get() = if (length > 0) data[11].toInt() else 1
+    val explosionSize: Float get() = data[12]
+    val explosionCount: Int get() = if (length > 0) data[13].toInt() else 0
+    val alienSize: Float get() = data[14]
+    val alienCount: Int get() = if (length > 0) data[15].toInt() else 0
+    val alienBlastSize: Float get() = data[16]
+    val alienBlastCount: Int get() = if (length > 0) data[17].toInt() else 0
 
     /** False until the engine has a screen size and has run its first tick. */
     val isReady: Boolean get() = length > 0 && playerSize > 0f
@@ -92,10 +131,40 @@ class GameFrame(maxEnemies: Int) {
     fun enemyX(index: Int): Float = data[HEADER_SIZE + index * 2]
     fun enemyY(index: Int): Float = data[HEADER_SIZE + index * 2 + 1]
 
+    // Bullets are stored right after the enemies.
+    fun bulletX(index: Int): Float = data[HEADER_SIZE + (enemyCount + index) * 2]
+    fun bulletY(index: Int): Float = data[HEADER_SIZE + (enemyCount + index) * 2 + 1]
+
+    // Power-ups come after the bullets.
+    fun powerUpX(index: Int): Float = data[HEADER_SIZE + (enemyCount + bulletCount + index) * 2]
+    fun powerUpY(index: Int): Float = data[HEADER_SIZE + (enemyCount + bulletCount + index) * 2 + 1]
+
+    // Explosions come last, 4 floats each: x, y, progress (0..1), seed (0..1).
+    private fun explosionBase(index: Int) =
+        HEADER_SIZE + (enemyCount + bulletCount + powerUpCount) * 2 + index * 4
+    fun explosionX(index: Int): Float = data[explosionBase(index)]
+    fun explosionY(index: Int): Float = data[explosionBase(index) + 1]
+    fun explosionProgress(index: Int): Float = data[explosionBase(index) + 2]
+    fun explosionSeed(index: Int): Float = data[explosionBase(index) + 3]
+
+    // Aliens after the explosions, 4 floats each: x, y, animation time (s), hit flash (0/1).
+    private fun alienBase(index: Int) = explosionBase(explosionCount) + index * 4
+    fun alienX(index: Int): Float = data[alienBase(index)]
+    fun alienY(index: Int): Float = data[alienBase(index) + 1]
+    fun alienAnimTime(index: Int): Float = data[alienBase(index) + 2]
+    fun alienFlashing(index: Int): Boolean = data[alienBase(index) + 3] > 0.5f
+
+    // Alien blasts last, 4 floats each: x, y, progress (0..1), seed.
+    private fun alienBlastBase(index: Int) = alienBase(alienCount) + index * 4
+    fun alienBlastX(index: Int): Float = data[alienBlastBase(index)]
+    fun alienBlastY(index: Int): Float = data[alienBlastBase(index) + 1]
+    fun alienBlastProgress(index: Int): Float = data[alienBlastBase(index) + 2]
+
     companion object {
         const val STATE_RUNNING = 0
         const val STATE_PAUSED = 1
         const val STATE_GAME_OVER = 2
-        const val HEADER_SIZE = 7
+        const val HEADER_SIZE = 18
+        const val MAX_WEAPON_LEVEL = 3   // matches GameWorld::kMaxWeaponLevel
     }
 }

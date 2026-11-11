@@ -25,10 +25,17 @@ public:
 
     // Layout written by writeSnapshot():
     //   [0] state  [1] score  [2] playerX  [3] playerY  [4] playerSize
-    //   [5] enemySize  [6] enemyCount  [7..] enemy x,y pairs
-    static constexpr int kHeaderSize = 7;
+    //   [5] enemySize  [6] enemyCount  [7] bulletSize  [8] bulletCount
+    //   [9] powerUpSize  [10] powerUpCount  [11] weaponLevel
+    //   [12] explosionSize  [13] explosionCount
+    //   [14] alienSize  [15] alienCount  [16] alienBlastSize  [17] alienBlastCount
+    //   [18..] enemy x,y | bullet x,y | power-up x,y | explosion x,y,progress,seed |
+    //          alien x,y,animTime,hitFlash(0/1) | alien blast x,y,progress,seed
+    static constexpr int kHeaderSize = 18;
 
-    GameLoop(int ticksPerSecond, std::size_t maxEnemies);
+    GameLoop(int ticksPerSecond, std::size_t maxEnemies, std::size_t maxBullets,
+             std::size_t maxPowerUps, std::size_t maxExplosions, std::size_t maxAliens,
+             std::size_t maxAlienBlasts);
     ~GameLoop();
 
     GameLoop(const GameLoop &) = delete;
@@ -63,6 +70,19 @@ private:
         float playerX = 0.0f, playerPrevX = 0.0f, playerY = 0.0f, playerSize = 0.0f;
         float enemySize = 0.0f;
         std::vector<float> enemies;   // x, prevX, y, prevY per active enemy
+        float bulletSize = 0.0f;
+        std::vector<float> bullets;   // x, prevX, y, prevY per active bullet
+        float powerUpSize = 0.0f;
+        std::vector<float> powerUps;  // x, prevX, y, prevY per active power-up
+        int weaponLevel = 1;
+        float explosionSize = 0.0f;
+        std::vector<float> explosions;   // x, y, age, seed per active explosion
+        float explosionDuration = 1.0f;
+        float alienSize = 0.0f;
+        std::vector<float> aliens;       // x, prevX, y, prevY, age, flashing per active alien
+        float alienBlastSize = 0.0f;
+        std::vector<float> alienBlasts;  // x, y, age, seed per active alien blast
+        float alienBlastDuration = 1.0f;
         Clock::time_point tickTime{};
     };
 

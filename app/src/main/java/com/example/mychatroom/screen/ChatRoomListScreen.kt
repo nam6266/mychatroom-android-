@@ -1,5 +1,10 @@
 package com.example.mychatroom.screen
 
+import com.example.mychatroom.ui.theme.GradientAvatar
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Card
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -77,16 +82,25 @@ fun ChatRoomListScreen(
 //            }
             Text(
                 text = "Chat Rooms",
-                fontSize = 20.sp,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(start = 4.dp)
+                modifier = Modifier.padding(start = 16.dp, top = 8.dp)
             )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        LazyColumn {
-            items(rooms) { room ->
+        if (rooms.isEmpty()) {
+            Text(
+                text = "No chat rooms yet.",
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+
+        LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
+            items(rooms, key = { it.id }) { room ->
                 RoomItem(room, onJoinChatClick = onJoinChatClick)
             }
         }
@@ -97,10 +111,12 @@ fun ChatRoomListScreen(
             Button(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(5.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .height(52.dp),
+                shape = RoundedCornerShape(26.dp),
                 onClick = { showDialog = true }
             ) {
-                Text("Create room", color = MaterialTheme.colorScheme.onBackground)
+                Text("Create room")
             }
         }
 
@@ -183,12 +199,14 @@ fun ChatRoomListScreen(
                         ) {
                             Button(
                                 onClick = {
-                                    roomViewModel.createRoom(name)
+                                    roomViewModel.createRoom(name.trim())
+                                    name = ""
                                     showDialog = false
                                 },
+                                enabled = name.isNotBlank(),
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text("Create", color = MaterialTheme.colorScheme.onBackground)
+                                Text("Create")
                             }
 
                             Spacer(modifier = Modifier.width(8.dp))
@@ -230,7 +248,7 @@ fun ChatRoomListScreen(
                                 containerColor = MaterialTheme.colorScheme.error
                             )
                         ) {
-                            Text("Log Out", color = MaterialTheme.colorScheme.onBackground)
+                            Text("Log Out", color = MaterialTheme.colorScheme.onError)
                         }
                     }
                 },
@@ -270,22 +288,36 @@ fun ChatRoomListScreen(
 
 @Composable
 fun RoomItem(room: Room, onJoinChatClick: (Room) -> Unit) {
-    Row(
+    Card(
+        onClick = { onJoinChatClick(room) },
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
+        ),
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
-        Text(
-            text = room.name,
-            color = MaterialTheme.colorScheme.onBackground,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Normal
-        )
-        OutlinedButton(
-            onClick = { onJoinChatClick(room) }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Join", color = MaterialTheme.colorScheme.onBackground)
+            GradientAvatar(name = room.name, size = 44.dp)
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = room.name,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            FilledTonalButton(onClick = { onJoinChatClick(room) }) {
+                Text("Join")
+            }
         }
     }
 }

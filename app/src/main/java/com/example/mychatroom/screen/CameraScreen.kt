@@ -1,5 +1,7 @@
 package com.example.mychatroom.screen
 
+import androidx.compose.material3.OutlinedButton
+import android.os.Environment
 import android.Manifest
 import android.content.ContentValues
 import android.content.Context
@@ -78,8 +80,10 @@ fun CameraCaptureScreen() {
             if (success) {
                 hasTakePicture = true
             } else {
+                // the camera was cancelled: remove the empty entry we created for it
+                imageUri?.let { deleteImage(context, it) }
+                imageUri = null
                 Toast.makeText(context, "Failed to take picture", Toast.LENGTH_SHORT).show()
-
             }
         }
     )
@@ -120,28 +124,43 @@ fun CameraCaptureScreen() {
             Text(if (hasTakePicture && imageUri != null) "Retake Photo" else "Take Photo")
         }
 
-        if (imageUri != null) {
+        if (hasTakePicture && imageUri != null) {
+            Spacer(modifier = Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Button(onClick = {
+                OutlinedButton(onClick = {
+                    imageUri?.let { deleteImage(context, it) }
                     imageUri = null
+                    hasTakePicture = false
+                    Toast.makeText(context, "Photo deleted", Toast.LENGTH_SHORT).show()
                 }) {
                     Text("Delete Photo")
                 }
                 Spacer(modifier = Modifier.width(24.dp))
                 Button(onClick = {
+                    // the camera already wrote the file; just confirm and reset
                     imageUri = null
+                    hasTakePicture = false
+                    Toast.makeText(context, "Saved to Pictures/MyChatRoom", Toast.LENGTH_SHORT).show()
                 }) {
-                    Text("Save Photo")
+                    Text("Keep Photo")
                 }
             }
         }
     }
 
 
+}
+
+private fun deleteImage(context: Context, uri: Uri) {
+    try {
+        context.contentResolver.delete(uri, null, null)
+    } catch (e: Exception) {
+        // nothing to clean up, or we no longer own it
+    }
 }
 
 private fun createImageUri(context: Context): Uri? {
@@ -160,7 +179,7 @@ private fun createImageUri(context: Context): Uri? {
         context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
     } else {
         // For older versions, save to the public Pictures directory
-        val storageDir = File(context.getExternalFilesDir(null)?.parentFile, "Pictures/MyChatRoom")
+        val storageDir = File(context.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "MyChatRoom")
         if (!storageDir.exists()) {
             storageDir.mkdirs()
         }

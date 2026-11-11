@@ -1,5 +1,7 @@
 package com.example.mychatroom.screen
 
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.material.icons.filled.Email
 import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
@@ -89,12 +91,12 @@ fun LoginScreen(
 
     val context = LocalContext.current
     // Login Focus
-    val passwordFocusRequester = FocusRequester()
+    val passwordFocusRequester = remember { FocusRequester() }
 
     // Sign up Focus
-    val passwordSignUpFocusRequester = FocusRequester()
-    val firstNameFocusRequester = FocusRequester()
-    val lastNameFocusRequester = FocusRequester()
+    val passwordSignUpFocusRequester = remember { FocusRequester() }
+    val firstNameFocusRequester = remember { FocusRequester() }
+    val lastNameFocusRequester = remember { FocusRequester() }
 
 
     val focusManager = LocalFocusManager.current
@@ -147,6 +149,11 @@ fun LoginScreen(
     LaunchedEffect(signUpResult) {
         when (signUpResult) {
             is Results.Success -> {
+                // clear the form only once the account really exists
+                email = ""
+                password = ""
+                firstName = ""
+                lastName = ""
                 showSignUpSucces = true
             }
 
@@ -191,7 +198,7 @@ fun LoginScreen(
                     TextInput(
                         value = email,
                         onValueChange = { email = it },
-                        InputType.Name,
+                        InputType.Email,
                         keyboardActions = KeyboardActions(onNext = {
                             passwordFocusRequester.requestFocus()
                         })
@@ -235,7 +242,7 @@ fun LoginScreen(
                     TextInput(
                         value = email,
                         onValueChange = { email = it },
-                        inputType = InputType.Name,
+                        inputType = InputType.Email,
                         keyboardActions = KeyboardActions(onNext = {
                             passwordSignUpFocusRequester.requestFocus()
                         })
@@ -254,8 +261,8 @@ fun LoginScreen(
                     TextInput(
                         value = firstName,
                         onValueChange = { firstName = it },
-                        inputType = InputType.Name,
-                        keyboardActions = KeyboardActions(onDone = {
+                        inputType = InputType.FirstName,
+                        keyboardActions = KeyboardActions(onNext = {
                             lastNameFocusRequester.requestFocus()
                         }),
                         focusRequester = firstNameFocusRequester
@@ -264,7 +271,7 @@ fun LoginScreen(
                     TextInput(
                         value = lastName,
                         onValueChange = { lastName = it },
-                        inputType = InputType.Name,
+                        inputType = InputType.LastName,
                         keyboardActions = KeyboardActions(onDone = {
                             focusManager.clearFocus()
                         }),
@@ -273,12 +280,12 @@ fun LoginScreen(
                     Spacer(modifier = Modifier.height(20.dp))
                     Button(
                         onClick = {
-                            authViewModel.signUp(email, password, lastName, firstName)
-                            //  after signup reset all to null
-                            email = ""
-                            password = ""
-                            lastName = ""
-                            firstName = ""
+                            authViewModel.signUp(
+                                email.trim(),
+                                password,
+                                firstName.trim(),
+                                lastName.trim()
+                            )
                         }, modifier = Modifier
                             .fillMaxWidth(),
                         shape = RoundedCornerShape(32.dp)
@@ -304,7 +311,7 @@ fun LoginScreen(
                 if (isLogin) {
                     Text("Don't have an account?", color = Color.White)
                 }else {
-                    Text("Allready had an account?", color = Color.White)
+                    Text("Already have an account?", color = Color.White)
                 }
                 TextButton(onClick = {
                     password = "" // Clear the password field
@@ -343,7 +350,7 @@ fun LoginScreen(
                             containerColor = MaterialTheme.colorScheme.error
                         )
                     ) {
-                        Text("Dismiss", color = MaterialTheme.colorScheme.onBackground)
+                        Text("Dismiss", color = MaterialTheme.colorScheme.onError)
                     }
                 }
             },
@@ -394,7 +401,7 @@ fun LoginScreen(
                             containerColor = MaterialTheme.colorScheme.error
                         )
                     ) {
-                        Text("Dismiss", color = MaterialTheme.colorScheme.onBackground)
+                        Text("Dismiss", color = MaterialTheme.colorScheme.onError)
                     }
                 }
             },
@@ -488,7 +495,6 @@ fun LoginScreen(
                     ) {
                         Text(
                             "Go to Login",
-                            color = MaterialTheme.colorScheme.onBackground,
                             style = MaterialTheme.typography.labelLarge
                         )
                     }
@@ -515,7 +521,7 @@ fun LoginScreen(
                             containerColor = MaterialTheme.colorScheme.error
                         )
                     ) {
-                        Text("Dismiss", color = MaterialTheme.colorScheme.onBackground)
+                        Text("Dismiss", color = MaterialTheme.colorScheme.onError)
                     }
                 }
             },
@@ -537,7 +543,7 @@ fun LoginScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = "I will do this when I no longer lazy",
+                        text = "Password reset isn't available yet.",
                         style = MaterialTheme.typography.bodyLarge.copy(
                             color = MaterialTheme.colorScheme.onBackground
                         ),
@@ -558,10 +564,33 @@ sealed class InputType(
     val keyboardOptions: KeyboardOptions,
     val visualTransformation: VisualTransformation
 ) {
-    object Name : InputType(
-        label = "Username",
+    object Email : InputType(
+        label = "Email",
+        icon = Icons.Default.Email,
+        keyboardOptions = KeyboardOptions(
+            imeAction = ImeAction.Next,
+            keyboardType = KeyboardType.Email
+        ),
+        visualTransformation = VisualTransformation.None
+    )
+
+    object FirstName : InputType(
+        label = "First name",
         icon = Icons.Default.Person,
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+        keyboardOptions = KeyboardOptions(
+            imeAction = ImeAction.Next,
+            capitalization = KeyboardCapitalization.Words
+        ),
+        visualTransformation = VisualTransformation.None
+    )
+
+    object LastName : InputType(
+        label = "Last name",
+        icon = Icons.Default.Person,
+        keyboardOptions = KeyboardOptions(
+            imeAction = ImeAction.Done,
+            capitalization = KeyboardCapitalization.Words
+        ),
         visualTransformation = VisualTransformation.None
     )
 

@@ -17,8 +17,17 @@ extern "C" {
 
 JNIEXPORT jlong JNICALL
 Java_com_example_mychatroom_engine_GameEngine_nativeCreate(JNIEnv *, jobject,
-                                                           jint ticksPerSecond, jint maxEnemies) {
-    auto *loop = new GameLoop(ticksPerSecond, static_cast<std::size_t>(maxEnemies > 0 ? maxEnemies : 1));
+                                                           jint ticksPerSecond, jint maxEnemies,
+                                                           jint maxBullets, jint maxPowerUps,
+                                                           jint maxExplosions, jint maxAliens,
+                                                           jint maxAlienBlasts) {
+    auto *loop = new GameLoop(ticksPerSecond,
+                              static_cast<std::size_t>(maxEnemies > 0 ? maxEnemies : 1),
+                              static_cast<std::size_t>(maxBullets > 0 ? maxBullets : 1),
+                              static_cast<std::size_t>(maxPowerUps > 0 ? maxPowerUps : 1),
+                              static_cast<std::size_t>(maxExplosions > 0 ? maxExplosions : 1),
+                              static_cast<std::size_t>(maxAliens > 0 ? maxAliens : 1),
+                              static_cast<std::size_t>(maxAlienBlasts > 0 ? maxAlienBlasts : 1));
     return reinterpret_cast<jlong>(loop);
 }
 

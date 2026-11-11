@@ -1,11 +1,11 @@
 package com.example.mychatroom.navigate
 
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import android.net.Uri
 import android.os.Build
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -35,7 +35,6 @@ fun NavigationGraph(
     NavHost(
         navController = navController,
         startDestination = startDestination,
-        modifier = Modifier.padding(top = 32.dp)
     ) {
         composable(Screen.SignupScreen.route) {
             SignUpScreen(
@@ -54,7 +53,7 @@ fun NavigationGraph(
 
         composable(Screen.HomeScreen.route) {
             HomeScreen(
-                onProfileClick = { navController.navigate(Screen.HomeScreen.route) },
+                onProfileClick = { navController.navigateTopLevel(Screen.HomeScreen.route) },
                 sessionManager
             )
         }
@@ -62,7 +61,8 @@ fun NavigationGraph(
         composable(Screen.ChatRoomsScreen.route) {
             ChatRoomListScreen(
                 sessionManager,
-                onJoinChatClick = { room -> navController.navigate("${Screen.ChatScreen.route}/${room.id}/${room.name}") },
+                // encode the name so spaces, '/' or '?' in a room name don't break the route
+                onJoinChatClick = { room -> navController.navigate("${Screen.ChatScreen.route}/${room.id}/${Uri.encode(room.name)}") },
                 onBackLoginCLick = { navController.navigate(Screen.LoginScreen.route) }
             )
         }
@@ -107,5 +107,17 @@ fun NavigationGraph(
             CameraCaptureScreen()
         }
 
+    }
+}
+
+/**
+ * Navigate to a top-level screen (drawer, bottom bar, FAB, top bar) without
+ * stacking duplicates: pressing "Home" five times no longer needs five Backs.
+ */
+fun NavHostController.navigateTopLevel(route: String) {
+    if (currentDestination?.route == route) return
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id)
+        launchSingleTop = true
     }
 }

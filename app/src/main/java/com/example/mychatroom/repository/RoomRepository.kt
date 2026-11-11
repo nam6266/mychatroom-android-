@@ -18,8 +18,8 @@ class RoomRepository(private val firestore: FirebaseFirestore) {
 
     suspend fun getRoom(): Results<List<Room>> = try {
         val querySnapshot = firestore.collection("rooms").get().await()
-        val rooms = querySnapshot.documents.map { document ->
-            document.toObject(Room::class.java)!!.copy(id = document.id)
+        val rooms = querySnapshot.documents.mapNotNull { document ->
+            document.toObject(Room::class.java)?.copy(id = document.id)
         }
         Results.Success(rooms)
     } catch (e: Exception) {

@@ -115,14 +115,14 @@ fun SignUpScreen(
         )
 
         Button(onClick = {
-            authViewModel.signUp(email, password, lastName, firstName)
+            authViewModel.signUp(email.trim(), password, firstName.trim(), lastName.trim())
             //  after signup reset all to null
             email = ""
             password = ""
             lastName = ""
             firstName = ""
         }) {
-            Text("Sign Up", color = MaterialTheme.colorScheme.onBackground)
+            Text("Sign Up")
         }
 
         Spacer(modifier = Modifier.height(16.dp))

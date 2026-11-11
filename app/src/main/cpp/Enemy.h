@@ -30,7 +30,16 @@ public:
     // Returns how many meteors fell off the bottom this tick (= dodged).
     int update(float dt, std::mt19937 &rng);
 
-    bool collidesWith(float x, float y, float radius) const;
+    // True if any meteor touches the capsule x, [yTop, yBottom] widened by radius.
+    bool collidesWith(float x, float yTop, float yBottom, float radius) const;
+
+    // Bullet hit test. The bullet's path this tick is the vertical segment
+    // x, [yTop, yBottom]; testing the whole path means a fast bullet can't
+    // jump over a meteor between two ticks. Destroys the first meteor it
+    // touches and returns true; its position is written to hitX/hitY if given
+    // (used to drop an upgrade where the meteor was).
+    bool hitBySegment(float x, float yTop, float yBottom, float radius,
+                      float *hitX = nullptr, float *hitY = nullptr);
 
     const std::vector<EnemyState> &enemies() const { return m_enemies; }
     std::size_t maxCount() const { return m_enemies.size(); }
@@ -38,6 +47,7 @@ public:
 
 private:
     EnemyState *findInactive();
+    bool touches(const EnemyState &enemy, float x, float yTop, float yBottom, float radius) const;
     void spawn(EnemyState &enemy, std::mt19937 &rng) const;
 
     std::vector<EnemyState> m_enemies;

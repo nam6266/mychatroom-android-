@@ -25,7 +25,11 @@ public:
     float prevX() const { return m_prevX; }
     float y() const { return m_y; }
     float size() const { return m_size; }        // drawn size (square)
-    float hitRadius() const;                     // collision radius, smaller than the sprite
+    // Hitbox is a capsule: the vertical segment x(), [hitTop(), hitBottom()]
+    // widened by hitRadius(). Fits the tall, thin rocket far better than a circle.
+    float hitRadius() const;
+    float hitTop() const;
+    float hitBottom() const;
 
 private:
     void clampToScreen();

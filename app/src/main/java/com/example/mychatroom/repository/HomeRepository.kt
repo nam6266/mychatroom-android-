@@ -37,8 +37,8 @@ class HomeRepository(
         val querySnapshot =
             firestore.collection("posts").orderBy("timestamp", Query.Direction.DESCENDING).get()
                 .await()
-        val posts = querySnapshot.documents.map { document ->
-            document.toObject(Post::class.java)!!.copy(id = document.id)
+        val posts = querySnapshot.documents.mapNotNull { document ->
+            document.toObject(Post::class.java)?.copy(id = document.id)
         }
         Results.Success(posts)
     } catch (e: Exception) {

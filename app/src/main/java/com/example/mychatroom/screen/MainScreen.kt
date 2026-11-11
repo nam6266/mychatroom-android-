@@ -1,5 +1,12 @@
 package com.example.mychatroom.screen
 
+import com.example.mychatroom.ui.theme.GradientTitle
+import com.example.mychatroom.ui.theme.AppBackground
+import com.example.mychatroom.navigate.navigateTopLevel
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.consumeWindowInsets
 import android.content.Intent
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
@@ -182,10 +189,7 @@ fun Main() {
     val themeFlow = settingManager.getThemeMode()
     val theme by themeFlow.collectAsState(initial = true)
     MyChatRoomTheme(darkTheme = theme) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
-        ) {
+        AppBackground {
             MainScreen(
                 navController,
                 authViewModel,
@@ -201,6 +205,7 @@ fun Main() {
 
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MainScreen(
@@ -242,7 +247,12 @@ fun MainScreen(
             drawerState = drawerState,
             gesturesEnabled = false,
             drawerContent = {
-                ModalDrawerSheet {
+                ModalDrawerSheet(drawerContainerColor = MaterialTheme.colorScheme.surface) {
+                    GradientTitle(
+                        text = "Fun Community",
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.padding(start = 28.dp, top = 28.dp, bottom = 8.dp)
+                    )
                     Spacer(Modifier.height(12.dp))
                     screensInDrawer.forEach { item ->
                         NavigationDrawerItem(
@@ -253,23 +263,25 @@ fun MainScreen(
                                 )
                             },
                             label = { Text(item.dTitle) },
-                            selected = false,
+                            // highlight the screen you're on
+                            selected = currentRoute == item.dRoute,
                             onClick = {
                                 scope.launch { drawerState.close() }
                                 if (item.dRoute == DrawerScreen.Logout.dRoute) {
                                     backToLogin = true
                                 } else {
-                                    navController.navigate(item.dRoute)
+                                    navController.navigateTopLevel(item.dRoute)
                                 }
                                 drawerSeleted = item.dTitle
                             },
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
                         )
                     }
                 }
             },
             content = {
                 Scaffold(
+                    containerColor = Color.Transparent, // let AppBackground show through
                     topBar = {
                         if (isLoggedIn) {
                             TopAppBar(navController, pressOnDrawer = {
@@ -280,7 +292,11 @@ fun MainScreen(
                         }
                     }
                 ) { innerPadding ->
-                    Box(modifier = Modifier.padding(innerPadding)) {
+                    Box(
+                        modifier = Modifier
+                            .padding(innerPadding)
+                            .consumeWindowInsets(innerPadding)
+                    ) {
                         NavigationGraph(
                             navController = navController,
                             authViewModel = authViewModel,
@@ -313,9 +329,11 @@ fun MainScreen(
                         Button(
                             onClick = {
                                 scope.launch {
-                                    navController.navigate(Screen.LoginScreen.route)
                                     sessionManager.clearSession()
                                     backToLogin = false
+                                    navController.navigate(Screen.LoginScreen.route) {
+                                        popUpTo(0) { inclusive = true }
+                                    }
                                 }
                             },
                             shape = RoundedCornerShape(12.dp),
@@ -323,7 +341,17 @@ fun MainScreen(
                                 containerColor = MaterialTheme.colorScheme.error
                             )
                         ) {
-                            Text("Log Out", color = MaterialTheme.colorScheme.onBackground)
+                            Text("Log Out", color = MaterialTheme.colorScheme.onError)
+                        }
+                    }
+                },
+                dismissButton = {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        TextButton(onClick = { backToLogin = false }) {
+                            Text("Cancel")
                         }
                     }
                 },
@@ -336,8 +364,8 @@ fun MainScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Clear,
-                            contentDescription = "Error",
+                            painter = painterResource(R.drawable.ic_logout),
+                            contentDescription = null,
                             tint = MaterialTheme.colorScheme.error,
                             modifier = Modifier.size(48.dp)
                         )
@@ -345,10 +373,8 @@ fun MainScreen(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Text(
-                            text = "Return to Login Screen",
-//                        style = MaterialTheme.typography.bodyLarge.copy(
-//                            color = MaterialTheme.colors.onSurface
-//                        ),
+                            text = "Log out of Fun Community?",
+                            style = MaterialTheme.typography.bodyLarge,
                             textAlign = TextAlign.Center
                         )
                     }
@@ -493,45 +519,15 @@ fun FabGroup(
                 modifier = Modifier.padding(paddings[index] * FastOutSlowInEasing.transform(0f, 0.8f, animationProgress)
                 ),
                 opacity = LinearEasing.transform(0.2f, 0.7f, animationProgress),
-                onClick = { navController?.navigate(item.dRoute)}
+                onClick = {
+                    // navigate, then fold the menu so it isn't still open when you come back
+                    navController?.let {
+                        it.navigateTopLevel(item.dRoute)
+                        toggleAnimation()
+                    }
+                }
             )
         }
-
-//        AnimatedFab(
-//            icon = Icons.Default.Settings,
-//            modifier = Modifier
-//                .padding(paddings[index] * FastOutSlowInEasing.transform(0f, 0.8f, animationProgress)
-//                ),
-//            opacity = LinearEasing.transform(0.2f, 0.7f, animationProgress)
-//        )
-//
-//        AnimatedFab(
-//            icon = Icons.Default.Build,
-//            modifier = Modifier
-//                .padding(
-//                PaddingValues(
-//                    bottom = 100.dp,
-//                ) * FastOutSlowInEasing.transform(0.1f, 0.9f, animationProgress)
-//            ),
-//            opacity = LinearEasing.transform(0.3f, 0.8f, animationProgress)
-//        )
-//
-//        AnimatedFab(
-//            painter = painterResource(R.drawable.ic_takephoto),
-//            modifier = Modifier.padding(
-//                PaddingValues(
-//                    bottom = 72.dp,
-//                    start = 210.dp
-//                ) * FastOutSlowInEasing.transform(0.2f, 1.0f, animationProgress)
-//            ),
-//            opacity = LinearEasing.transform(0.4f, 0.9f, animationProgress),
-//            onClick = {
-//                navController?.navigate(Screen.CameraScreen.route)
-//            }
-//        )
-
-
-
         AnimatedFab(
             painter = Icons.Default.Add,
             modifier = Modifier
@@ -586,7 +582,7 @@ fun TopAppBar(navController: NavHostController, pressOnDrawer: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 32.dp)
+            .statusBarsPadding()
     ) {
 
         Row(
@@ -606,20 +602,18 @@ fun TopAppBar(navController: NavHostController, pressOnDrawer: () -> Unit) {
                     )
                 }
 
-                Text(
+                GradientTitle(
                     text = "Fun Community",
-                    fontSize = 20.sp,
-                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier
                         .padding(start = 4.dp)
-                        .clickable { navController.navigate(Screen.HomeScreen.route) }
+                        .clickable { navController.navigateTopLevel(Screen.HomeScreen.route) }
                 )
             }
 
-            IconButton(onClick = { navController.navigate(Screen.SettingScreen.route) }) {
+            IconButton(onClick = { navController.navigateTopLevel(Screen.SettingScreen.route) }) {
                 Icon(
                     imageVector = Icons.Rounded.Settings,
-                    contentDescription = "Back",
+                    contentDescription = "Settings",
                     tint = MaterialTheme.colorScheme.onBackground
                 )
             }
@@ -656,7 +650,7 @@ fun BottomAppBar(
         ) {
             bottomNavigator.forEach { item ->
                 IconButton(onClick = {
-                    navController.navigate(item.dRoute)
+                    navController.navigateTopLevel(item.dRoute)
                     seletedTab = item.dTitle
                 }) {
                     Icon(

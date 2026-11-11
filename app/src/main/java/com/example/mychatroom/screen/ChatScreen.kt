@@ -1,5 +1,14 @@
 package com.example.mychatroom.screen
 
+import com.example.mychatroom.ui.theme.brandGradient
+import com.example.mychatroom.ui.theme.GradientAvatar
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.foundation.layout.imePadding
 import android.content.Intent
 import android.os.Build
 import android.util.Log
@@ -66,13 +75,28 @@ fun ChatScreen(
 
     ) {
 
+    val context = LocalContext.current
     val messages by chatViewModel.message.observeAsState(emptyList())
-    chatViewModel.setRoomId(roomId)
+    val error by chatViewModel.error.observeAsState()
     val text = remember { mutableStateOf("") }
     val currentUserEmail by sessionManager.getUserEmail().collectAsState(initial = null)
+
+    // Start listening once per room (not on every recomposition / keystroke).
+    LaunchedEffect(roomId) {
+        chatViewModel.setRoomId(roomId)
+    }
+
+    LaunchedEffect(error) {
+        error?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            chatViewModel.clearError()
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .imePadding() // keep the input row above the keyboard
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically
@@ -84,11 +108,14 @@ fun ChatScreen(
                     tint = MaterialTheme.colorScheme.onBackground
                 )
             }
+            GradientAvatar(name = roomName, size = 36.dp)
             Text(
                 text = roomName,
                 fontSize = 20.sp,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(start = 4.dp)
+                maxLines = 1,
+                modifier = Modifier.padding(start = 10.dp)
             )
         }
         LazyColumn(
@@ -115,13 +142,15 @@ fun ChatScreen(
             BasicTextField(
                 value = text.value,
                 onValueChange = { text.value = it },
-                textStyle = TextStyle(fontSize = 16.sp, color = Color.White),
+                textStyle = TextStyle(fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                maxLines = 5,
                 modifier = Modifier
                     .weight(1f)
                     .padding(8.dp)
                     .background(
-                        color = Color.DarkGray,
-                        shape = RoundedCornerShape(20.dp)
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(24.dp)
                     )
                     .padding(horizontal = 12.dp, vertical = 10.dp),
                 decorationBox = { innerTextField ->
@@ -131,8 +160,8 @@ fun ChatScreen(
                     ) {
                         if (text.value.isEmpty()) {
                             Text(
-                                text = "Aa",
-                                color = Color.Gray,
+                                text = "Message…",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                 fontSize = 16.sp,
                                 modifier = Modifier.align(Alignment.CenterStart)
                             )
@@ -145,17 +174,16 @@ fun ChatScreen(
 
             IconButton(
                 onClick = {
-                    if (text.value.isNotEmpty()) {
+                    if (text.value.isNotBlank()) {
                         chatViewModel.sendMessage(text.value.trim())
                         text.value = ""
-                        chatViewModel.loadMessages()
                     }
                 }
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Send,
                     contentDescription = "Send",
-                    tint = colorResource(id = R.color.blue_700)
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -166,40 +194,59 @@ fun ChatScreen(
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ChatMessageItem(message: Message) {
-    Column(
+    val mine = message.isSentByCurrentUser
+    // the corner nearest the sender is squared off, like a speech tail
+    val bubbleShape = if (mine) {
+        RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomEnd = 4.dp, bottomStart = 18.dp)
+    } else {
+        RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomEnd = 18.dp, bottomStart = 4.dp)
+    }
+
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        horizontalAlignment = if (message.isSentByCurrentUser) Alignment.End else Alignment.Start
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.Bottom
     ) {
-        Box(
-            modifier = Modifier
-                .background(
-                    if (message.isSentByCurrentUser) {
-                        colorResource(id = R.color.blue_700)
-                    } else colorResource(id = R.color.lightblack),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                .padding(12.dp)
+        if (!mine) {
+            GradientAvatar(name = message.senderFirstName, size = 32.dp)
+            Spacer(modifier = Modifier.width(8.dp))
+        }
+        Column(
+            horizontalAlignment = if (mine) Alignment.End else Alignment.Start,
+            modifier = Modifier.widthIn(max = 280.dp)
         ) {
+            if (!mine) {
+                Text(
+                    text = message.senderFirstName,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .clip(bubbleShape)
+                    .background(
+                        if (mine) brandGradient()
+                        else SolidColor(MaterialTheme.colorScheme.surfaceVariant)
+                    )
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+            ) {
+                Text(
+                    text = message.text,
+                    color = if (mine) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 16.sp
+                )
+            }
             Text(
-                text = message.text,
-                color = colorResource(id = R.color.white),
-                fontSize = 16.sp
+                text = formatTimestamp(message.timestamp),
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
             )
         }
-
-        Spacer(modifier = Modifier.height(2.dp))
-
-        Text(
-            text = message.senderFirstName,
-            style = TextStyle(fontSize = 12.sp, color = MaterialTheme.colorScheme.onBackground),
-
-            )
-        Text(
-            text = formatTimestamp(message.timestamp),
-            style = TextStyle(fontSize = 11.sp, color = MaterialTheme.colorScheme.onBackground)
-        )
     }
 }
 

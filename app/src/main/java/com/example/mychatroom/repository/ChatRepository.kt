@@ -1,5 +1,6 @@
 package com.example.mychatroom.repository
 
+import android.util.Log
 import com.example.mychatroom.data.Message
 import com.example.mychatroom.data.Results
 import com.google.firebase.firestore.FirebaseFirestore
@@ -24,11 +25,14 @@ class ChatRepository(private val firestore: FirebaseFirestore) {
         val subscription = firestore.collection("rooms").document(roomId)
             .collection("messages")
             .orderBy("timestamp")
-            .addSnapshotListener { querySnapshot, _ ->
+            .addSnapshotListener { querySnapshot, error ->
+                if (error != null) {
+                    Log.e("ChatRepository", "Listening to room $roomId failed", error)
+                    return@addSnapshotListener
+                }
                 querySnapshot?.let {
-                    trySend(it.documents.map { doc ->
-                        doc.toObject(Message::class.java)!!.copy()
-                    }).isSuccess
+                    // mapNotNull: one malformed document must not crash the chat
+                    trySend(it.documents.mapNotNull { doc -> doc.toObject(Message::class.java) })
                 }
             }
 
