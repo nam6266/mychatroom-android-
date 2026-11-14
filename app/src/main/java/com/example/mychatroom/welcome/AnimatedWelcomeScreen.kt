@@ -21,7 +21,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
-import com.example.mychatroom.ui.theme.SplashScreenDecoratorTheme
 
 @Composable
 fun AnimatedWelcomeScreen(onclick: () -> Unit) {

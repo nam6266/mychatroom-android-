@@ -13,7 +13,7 @@ package com.example.mychatroom.engine
 class GameEngine(
     ticksPerSecond: Int = 60,
     val maxEnemies: Int = 20,
-    // Level 3 fires 3 bullets per volley with ~5 volleys on screen at once.
+    // Level 3 fires 3 bullets per round, so maximun should be 12 ~ 15, but keep it 24 incase of later slow the bullet speed which will spawn more bullet on the screen
     val maxBullets: Int = 24,
     val maxPowerUps: Int = 4,
     val maxExplosions: Int = 16,
@@ -99,14 +99,14 @@ class GameFrame(
     maxAlienBlasts: Int,
 ) {
     internal val data = FloatArray(
-        HEADER_SIZE + (maxEnemies + maxBullets + maxPowerUps) * 2 + maxExplosions * 4 +
+        HEADER_SIZE + (maxEnemies + maxBullets) * 2 + maxPowerUps * 3 + maxExplosions * 4 +
             maxAliens * 4 + maxAlienBlasts * 4
     )
     internal var length = 0
 
     val state: Int get() = data[0].toInt()
     val isGameOver: Boolean get() = state == STATE_GAME_OVER
-    val isPaused: Boolean get() = state == STATE_PAUSED
+    val isPaused: Boolean get() = state == STATE_PAUSED //currently no pause for now
     val score: Int get() = data[1].toInt()
     val playerX: Float get() = data[2]
     val playerY: Float get() = data[3]
@@ -118,6 +118,11 @@ class GameFrame(
     val powerUpSize: Float get() = data[9]
     val powerUpCount: Int get() = if (length > 0) data[10].toInt() else 0
     val weaponLevel: Int get() = if (length > 0) data[11].toInt() else 1
+    /** Seconds of laser left; 0 = laser off. */
+    val laserTimeLeft: Float get() = if (length > 0) data[18] else 0f
+    /** Where the beam ends (y in px): the first enemy it touches, or 0 = top of the screen. */
+    val laserTopY: Float get() = data[19]
+    val laserWidth: Float get() = data[20]
     val explosionSize: Float get() = data[12]
     val explosionCount: Int get() = if (length > 0) data[13].toInt() else 0
     val alienSize: Float get() = data[14]
@@ -136,12 +141,15 @@ class GameFrame(
     fun bulletY(index: Int): Float = data[HEADER_SIZE + (enemyCount + index) * 2 + 1]
 
     // Power-ups come after the bullets.
-    fun powerUpX(index: Int): Float = data[HEADER_SIZE + (enemyCount + bulletCount + index) * 2]
-    fun powerUpY(index: Int): Float = data[HEADER_SIZE + (enemyCount + bulletCount + index) * 2 + 1]
+    // Power-ups after the bullets, 3 floats each: x, y, kind (0 = gun upgrade, 1 = laser).
+    private fun powerUpBase(index: Int) = HEADER_SIZE + (enemyCount + bulletCount) * 2 + index * 3
+    fun powerUpX(index: Int): Float = data[powerUpBase(index)]
+    fun powerUpY(index: Int): Float = data[powerUpBase(index) + 1]
+    fun powerUpIsLaser(index: Int): Boolean = data[powerUpBase(index) + 2] > 0.5f
 
     // Explosions come last, 4 floats each: x, y, progress (0..1), seed (0..1).
     private fun explosionBase(index: Int) =
-        HEADER_SIZE + (enemyCount + bulletCount + powerUpCount) * 2 + index * 4
+        powerUpBase(powerUpCount) + index * 4
     fun explosionX(index: Int): Float = data[explosionBase(index)]
     fun explosionY(index: Int): Float = data[explosionBase(index) + 1]
     fun explosionProgress(index: Int): Float = data[explosionBase(index) + 2]
@@ -164,7 +172,7 @@ class GameFrame(
         const val STATE_RUNNING = 0
         const val STATE_PAUSED = 1
         const val STATE_GAME_OVER = 2
-        const val HEADER_SIZE = 18
+        const val HEADER_SIZE = 21
         const val MAX_WEAPON_LEVEL = 3   // matches GameWorld::kMaxWeaponLevel
     }
 }

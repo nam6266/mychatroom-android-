@@ -27,16 +27,32 @@ project("mychatroom")
 # used in the AndroidManifest.xml file.
 add_library(${CMAKE_PROJECT_NAME} SHARED
         # List C/C++ source files with relative paths to this CMakeLists.txt.
-        mychatroom.cpp
-        GameLoop.cpp
-        GameWorld.cpp
-        Player.cpp
-        Enemy.cpp
-        Bullet.cpp
-        PowerUp.cpp
-        Explosion.cpp
-        Alien.cpp
+        # One folder per game, plus common/ for code both games use.
+
+        # Shared by both games
+        common/Explosion.cpp
+
+        # Alien Shooter
+        alien_shooter/alien_shooter_jni.cpp
+        alien_shooter/GameLoop.cpp
+        alien_shooter/GameWorld.cpp
+        alien_shooter/Player.cpp
+        alien_shooter/Enemy.cpp
+        alien_shooter/Bullet.cpp
+        alien_shooter/PowerUp.cpp
+        alien_shooter/Alien.cpp
+
+        # Space Survivor
+        survivor/survivor_jni.cpp
+        survivor/SurvivorWorld.cpp
+        survivor/SurvivorEnemy.cpp
+        survivor/SurvivorBullet.cpp
+        survivor/SurvivorLoop.cpp
 )
+
+# Headers in common/ can be included by name from either game's folder
+# (#include "Explosion.h"). Headers in the same folder need nothing extra.
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE common)
 
 # The logic loop runs on a std::thread and uses std::clamp.
 target_compile_features(${CMAKE_PROJECT_NAME} PRIVATE cxx_std_17)

@@ -13,10 +13,6 @@ class UserRepository(
     private val firestore: FirebaseFirestore
 ) {
 
-    private suspend fun saveUserToFirestore(user: User) {
-        firestore.collection("users").document(user.email).set(user).await()
-    }
-
     suspend fun login(email: String, password: String): Results<Pair<Boolean, User>> {
         return try {
             if (email.isEmpty() || password.isEmpty()) {
@@ -56,29 +52,6 @@ class UserRepository(
             Log.d("namLog", "signUp fail : $e")
             Results.Error(e)
         }
-
-//    fun getCurrentUser(roomId: String): Flow<Int> = callbackFlow {
-//        val subscription =
-//            firestore.collection("rooms")
-//                .document(roomId)
-//                .collection("messages")
-//                .orderBy("timeStamp")
-//                .addSnapshotListener { querySnapshot, exception ->
-//                    if (exception != null) {
-//                        trySend(emptyList<Message>())
-//                        return@addSnapshotListener
-//                    }
-//
-//                    querySnapshot?.let {
-//                        val message =
-//                            it.documents.mapNotNull { doc -> doc.toObject(Message::class.java) }
-//                        trySend(message).isSuccess
-//                    }
-//                }
-//        awaitClose {
-//            subscription.remove()
-//        }
-//    }
 
     suspend fun getCurrentUser(): Results<User> = try {
         val uid = auth.currentUser?.uid

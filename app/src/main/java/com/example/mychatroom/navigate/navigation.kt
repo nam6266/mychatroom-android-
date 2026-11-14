@@ -1,16 +1,17 @@
 package com.example.mychatroom.navigate
 
+import com.example.mychatroom.screen.SpaceSurvivor
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import android.net.Uri
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.mychatroom.screen.AlienGame
 import com.example.mychatroom.screen.CameraCaptureScreen
 import com.example.mychatroom.screen.ChatRoomListScreen
 import com.example.mychatroom.screen.ChatScreen
@@ -18,7 +19,6 @@ import com.example.mychatroom.screen.GameScreen
 import com.example.mychatroom.screen.HomeScreen
 import com.example.mychatroom.screen.LoginScreen
 import com.example.mychatroom.screen.SettingScreen
-import com.example.mychatroom.screen.SignUpScreen
 import com.example.mychatroom.session.SessionManager
 import com.example.mychatroom.session.SettingManager
 import com.example.mychatroom.viewModel.AuthViewModel
@@ -36,17 +36,10 @@ fun NavigationGraph(
         navController = navController,
         startDestination = startDestination,
     ) {
-        composable(Screen.SignupScreen.route) {
-            SignUpScreen(
-                authViewModel,
-                onNavigationToLogin = { navController.navigate(Screen.LoginScreen.route) })
-        }
-
         composable(Screen.LoginScreen.route) {
             LoginScreen(
                 authViewModel,
                 LoginClick = { navController.navigate(Screen.HomeScreen.route) },
-                SignUpClick = { navController.navigate(Screen.SignupScreen.route) },
                 sessionManager
             )
         }
@@ -63,7 +56,6 @@ fun NavigationGraph(
                 sessionManager,
                 // encode the name so spaces, '/' or '?' in a room name don't break the route
                 onJoinChatClick = { room -> navController.navigate("${Screen.ChatScreen.route}/${room.id}/${Uri.encode(room.name)}") },
-                onBackLoginCLick = { navController.navigate(Screen.LoginScreen.route) }
             )
         }
 
@@ -101,8 +93,17 @@ fun NavigationGraph(
         }
 
         composable(Screen.GameScreen.route) {
-            GameScreen()
+            GameScreen(navController = navController)   // the list of games
         }
+
+        composable(Screen.AlienGame.route) {
+            AlienGame()
+        }
+
+        composable(Screen.SpaceSurvivor.route) {
+            SpaceSurvivor()
+        }
+
         composable(Screen.CameraScreen.route) {
             CameraCaptureScreen()
         }

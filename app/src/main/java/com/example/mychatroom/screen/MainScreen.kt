@@ -1,19 +1,11 @@
 package com.example.mychatroom.screen
 
-import com.example.mychatroom.ui.theme.GradientTitle
-import com.example.mychatroom.ui.theme.AppBackground
-import com.example.mychatroom.navigate.navigateTopLevel
-import androidx.compose.material3.TextButton
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.consumeWindowInsets
 import android.content.Intent
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,27 +16,24 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.AlertDialog
@@ -62,8 +51,8 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -82,15 +71,12 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -102,6 +88,7 @@ import com.example.mychatroom.navigate.NavigationGraph
 import com.example.mychatroom.navigate.Screen
 import com.example.mychatroom.navigate.bottomNavigator
 import com.example.mychatroom.navigate.fabNavigator
+import com.example.mychatroom.navigate.navigateTopLevel
 import com.example.mychatroom.navigate.screensInDrawer
 import com.example.mychatroom.servies.ChatService
 import com.example.mychatroom.servies.NotificationPermissionManager
@@ -109,10 +96,11 @@ import com.example.mychatroom.session.SessionManager
 import com.example.mychatroom.session.SettingManager
 import com.example.mychatroom.times
 import com.example.mychatroom.transform
+import com.example.mychatroom.ui.theme.AppBackground
 import com.example.mychatroom.ui.theme.DEFAULT_PADDING
+import com.example.mychatroom.ui.theme.GradientTitle
 import com.example.mychatroom.ui.theme.MyChatRoomTheme
 import com.example.mychatroom.viewModel.AuthViewModel
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.sin
@@ -220,9 +208,7 @@ fun MainScreen(
     ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    var drawerSeleted by remember { mutableStateOf("") }
     var backToLogin by remember { mutableStateOf(false) }
-    var needLogin by remember { mutableStateOf(false) }
     val authResult by authViewModel.authResultLogin.observeAsState()
 
     val isLoggedIn = (authResult as? Results.Success)?.data?.first == true
@@ -272,7 +258,6 @@ fun MainScreen(
                                 } else {
                                     navController.navigateTopLevel(item.dRoute)
                                 }
-                                drawerSeleted = item.dTitle
                             },
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
                         )
@@ -385,43 +370,6 @@ fun MainScreen(
             )
         }
 
-        if (needLogin) {
-            AlertDialog(
-                onDismissRequest = { needLogin = false },
-                confirmButton = {
-
-                },
-                title = null,
-                text = {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Clear,
-                            contentDescription = "Error",
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(48.dp)
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Text(
-                            text = "Please Login",
-//                        style = MaterialTheme.typography.bodyLarge.copy(
-//                            color = MaterialTheme.colorScheme.onSurface
-//                        ),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                },
-                shape = RoundedCornerShape(16.dp),
-                tonalElevation = AlertDialogDefaults.TonalElevation,
-                containerColor = MaterialTheme.colorScheme.surface,
-            )
-        }
     }
 }
 
@@ -443,26 +391,6 @@ fun Circle(color: Color, animationProgress: Float) {
     )
 }
 
-@Composable
-fun CustomBottomNavigation() {
-    Row(
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .height(80.dp)
-            .paint(
-                painter = painterResource(R.drawable.bottom_navigator),
-                contentScale = ContentScale.FillHeight
-            )
-            .padding(horizontal = 40.dp)
-    ) {
-        listOf(Icons.Filled.Person, Icons.Filled.Settings).map { image ->
-            IconButton(onClick = { }) {
-                Icon(imageVector = image, contentDescription = null, tint = Color.White)
-            }
-        }
-    }
-}
 
 
 
@@ -629,7 +557,6 @@ fun BottomAppBar(
     clickAnimationProgress: Float = 0f,
     toggleAnimation: () -> Unit
 ) {
-    var seletedTab by remember { mutableStateOf("Home") }
 
     Box(
         Modifier
@@ -651,7 +578,6 @@ fun BottomAppBar(
             bottomNavigator.forEach { item ->
                 IconButton(onClick = {
                     navController.navigateTopLevel(item.dRoute)
-                    seletedTab = item.dTitle
                 }) {
                     Icon(
                         painter = painterResource(item.icon),

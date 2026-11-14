@@ -18,7 +18,6 @@ class SessionManager(private val context: Context) {
 
 
     companion object {
-        val USER_UID = stringPreferencesKey("user_uid")
         val USER_EMAIL = stringPreferencesKey("user_email")
         val USER_FIRST_NAME = stringPreferencesKey("user_first_name")
         val USER_LAST_NAME = stringPreferencesKey("user_last_name")
@@ -41,7 +40,6 @@ class SessionManager(private val context: Context) {
         return preferences.asMap().isNotEmpty()
     }
 
-    //    fun getUserUid(): Flow<String?> = context.dataStore.data.map { it[USER_UID] }
     fun getUserEmail(): Flow<String?> = context.dataStore.data.map { it[USER_EMAIL] }
     fun getFirstName(): Flow<String?> = context.dataStore.data.map { it[USER_FIRST_NAME] }
     fun getLastName(): Flow<String?> = context.dataStore.data.map { it[USER_LAST_NAME] }

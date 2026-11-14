@@ -5,7 +5,6 @@ import androidx.compose.material.icons.filled.Email
 import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.widget.FrameLayout
 import androidx.compose.animation.core.Animatable
@@ -71,7 +70,6 @@ import com.example.mychatroom.data.Results
 import com.example.mychatroom.data.User
 import com.example.mychatroom.session.SessionManager
 import com.example.mychatroom.viewModel.AuthViewModel
-import com.example.mychatroom.welcome.FloatingElements
 import com.google.accompanist.insets.ProvideWindowInsets
 import com.google.accompanist.insets.navigationBarsWithImePadding
 import com.google.android.exoplayer2.ExoPlayer
@@ -85,7 +83,6 @@ import kotlinx.coroutines.launch
 fun LoginScreen(
     authViewModel: AuthViewModel,
     LoginClick: () -> Unit,
-    SignUpClick: () -> Unit,
     sessionManager: SessionManager
 ) {
 

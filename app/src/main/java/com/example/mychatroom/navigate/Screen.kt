@@ -5,7 +5,6 @@ import com.example.mychatroom.R
 
 sealed class Screen(val route: String) {
     object LoginScreen : Screen("loginscreen")
-    object SignupScreen : Screen("signupscreen")
     object HomeScreen : Screen("homescreen")
     object ChatRoomsScreen : Screen("chatroomscreen")
     object ChatScreen : Screen("chatscreen")
@@ -14,6 +13,8 @@ sealed class Screen(val route: String) {
     object SavedScreen : Screen("savedscreen")
     object LocationScreen : Screen("locationscreen")
     object GameScreen : Screen("gamescreen")
+    object AlienGame : Screen("alienscreen")
+    object SpaceSurvivor : Screen("survivorscreen")
     object CameraScreen : Screen("camerascreen")
 }
 
@@ -49,8 +50,8 @@ sealed class DrawerScreen(val dTitle: String, val dRoute: String, @DrawableRes v
     )
 
     object Game : DrawerScreen(
-        "Game",
-        "gamescreen",
+        "Games",
+        "gamescreen",          // opens the game list (GameScreen)
         R.drawable.ic_game
     )
 
@@ -85,4 +86,28 @@ val fabNavigator = listOf(
 val bottomNavigator = listOf(
     DrawerScreen.Home,
     DrawerScreen.Message
+)
+
+/** One game on the Games page: what to show, and which route opens it. */
+data class GameInfo(
+    val title: String,
+    val description: String,
+    @DrawableRes val cover: Int,
+    val route: String,
+)
+
+/** Every game in the app. To add a game: register its route in navigation.kt, add a line here. */
+val gameMenu = listOf(
+    GameInfo(
+        title = "Alien Shooter",
+        description = "Dodge meteors, blast UFOs and grab upgrades.",
+        cover = R.drawable.game_cover,
+        route = Screen.AlienGame.route,
+    ),
+    GameInfo(
+        title = "Space Survivor",
+        description = "Fly anywhere and survive the swarm. (In progress)",
+        cover = R.drawable.survivor_cover,
+        route = Screen.SpaceSurvivor.route,
+    ),
 )

@@ -6,14 +6,10 @@ import android.os.IBinder
 import android.util.Log
 import androidx.activity.result.launch
 import androidx.compose.ui.semantics.text
-import com.example.mychatroom.Injection
 import com.example.mychatroom.data.Message
-import com.example.mychatroom.repository.ChatRepository
-import com.example.mychatroom.session.SessionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 class ChatService : Service() {
@@ -26,15 +22,11 @@ class ChatService : Service() {
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.IO + job)
 
-    private lateinit var chatRepository: ChatRepository
     private lateinit var notificationHandler: NotificationHandler
 
     override fun onCreate() {
         super.onCreate()
-        chatRepository = ChatRepository(Injection.instance())
         notificationHandler = NotificationHandler(this)
-
-        val message = Message("nam", "110", "hello", System.currentTimeMillis() )
 
         notificationHandler.createNotificationChannel(
             channelId = NotificationHandler.CHANNEL_ID,

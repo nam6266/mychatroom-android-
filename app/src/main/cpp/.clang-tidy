@@ -1,0 +1,13 @@
+# Checks close to the basic MISRA C++ rules applied to this project.
+# Android Studio reads this file and shows these as warnings in the C++ editor.
+Checks: >
+  -*,
+  readability-braces-around-statements,
+  readability-implicit-bool-conversion,
+  readability-uppercase-literal-suffix,
+  readability-isolate-declaration,
+  cppcoreguidelines-init-variables,
+  cppcoreguidelines-narrowing-conversions,
+  cppcoreguidelines-pro-type-cstyle-cast,
+  bugprone-switch-missing-default-case
+HeaderFilterRegex: '.*'

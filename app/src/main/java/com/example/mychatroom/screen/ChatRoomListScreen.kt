@@ -6,7 +6,6 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Card
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,13 +18,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -36,33 +31,26 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mychatroom.data.Role
 import com.example.mychatroom.data.Room
 import com.example.mychatroom.session.SessionManager
 import com.example.mychatroom.viewModel.RoomViewModel
-import kotlinx.coroutines.launch
 
 @Composable
 fun ChatRoomListScreen(
     sessionManager: SessionManager,
     roomViewModel: RoomViewModel = viewModel(),
     onJoinChatClick: (Room) -> Unit,
-    onBackLoginCLick: () -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
     val rooms by roomViewModel.rooms.observeAsState(emptyList())
-    var backToLogin by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
     val roleFlow = sessionManager.getUserRole()
     val role by roleFlow.collectAsState(initial = Role.MEMBER)
     Column(
@@ -73,13 +61,6 @@ fun ChatRoomListScreen(
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-//            IconButton(onClick = { backToLogin = true }) {
-//                Icon(
-//                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-//                    contentDescription = "Back",
-//                    tint = MaterialTheme.colorScheme.onBackground
-//                )
-//            }
             Text(
                 text = "Chat Rooms",
                 style = MaterialTheme.typography.headlineSmall,
@@ -119,41 +100,6 @@ fun ChatRoomListScreen(
                 Text("Create room")
             }
         }
-
-//        if (showdialog) {
-//            BasicAlertDialog(onDismissRequest = { showdialog = false }) {
-//                Surface(
-//                    modifier = Modifier.wrapContentWidth().wrapContentHeight(),
-//                    shape = MaterialTheme.shapes.large,
-//                    tonalElevation = AlertDialogDefaults.TonalElevation
-//                ) {
-//                    Text("Create a new room")
-//                    Spacer(Modifier.height(8.dp))
-//                    Column(modifier = Modifier.padding(16.dp)) {
-//                        OutlinedTextField(
-//                            value = name,
-//                            onValueChange = { name = it },
-//                            label = { Text("name") },
-//                            modifier = Modifier
-//                                .fillMaxWidth()
-//                                .padding(8.dp)
-//                        )
-//
-//                        Row(modifier = Modifier.fillMaxWidth(),
-//                            verticalAlignment = Alignment.CenterVertically,
-//                            horizontalArrangement = Arrangement.SpaceEvenly) {
-//                            Button(onClick = {}) {
-//                                Text("Create")
-//                            }
-//
-//                            Button(onClick = {}) {
-//                                Text("Cancel")
-//                            }
-//                        }
-//                    }
-//                }
-//            }
-//        }
 
         if (showDialog) {
             AlertDialog(
@@ -225,64 +171,6 @@ fun ChatRoomListScreen(
             )
         }
 
-        if (backToLogin) {
-            AlertDialog(
-                onDismissRequest = { backToLogin = false },
-                confirmButton = {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Button(
-                            onClick = {
-                                scope.launch {
-                                    onBackLoginCLick()
-
-                                    sessionManager.clearSession()
-                                    backToLogin = false
-                                }
-                            },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
-                            )
-                        ) {
-                            Text("Log Out", color = MaterialTheme.colorScheme.onError)
-                        }
-                    }
-                },
-                title = null,
-                text = {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Clear,
-                            contentDescription = "Error",
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(48.dp)
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Text(
-                            text = "Return to Login Screen",
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                color = MaterialTheme.colorScheme.onSurface
-                            ),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                },
-                shape = RoundedCornerShape(16.dp),
-                tonalElevation = AlertDialogDefaults.TonalElevation,
-                containerColor = MaterialTheme.colorScheme.surface,
-            )
-        }
     }
 }
 
