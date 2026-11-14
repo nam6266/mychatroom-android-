@@ -5,5 +5,5 @@
 -about the game it use cpp for handle logic and kotlin to draw sprite to screen.
 
 ----------------------------------------------------------------------------------------------------------------------------------\
+<img width="591" height="919" alt="image" src="https://github.com/user-attachments/assets/77f4f8c4-54ed-45b5-9fc8-7d0e09abbd30" />
 
-![Uploading image.png…]()
