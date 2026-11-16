@@ -15,3 +15,6 @@
 local.properties
 app/google-services.json
 _backup_before_cleanup/
+
+# Kotlin compiler cache (Gradle makes it again)
+.kotlin/

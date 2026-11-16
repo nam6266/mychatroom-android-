@@ -17,7 +17,7 @@ class SurvivorLoop {
 public:
     enum State : int { Running = 0, Paused = 1, GameOver = 2 };
 
-    // Layout written by writeSnapshot(). Positions are WORLD coordinates (px):
+    // Layout copied out by copySnapshotTo(). Positions are WORLD coordinates (px):
     //   [0] state  [1] playerX  [2] playerY  [3] playerAngle (rad, 0 = up, clockwise)
     //   [4] playerSize  [5] enemySize  [6] enemyCount  [7] bulletSize  [8] bulletCount
     //   [9] blastSize  [10] blastCount  [11] kills  [12] seconds survived
@@ -41,7 +41,7 @@ public:
     void restart();
 
     // Called from the UI thread once per rendered frame. Returns floats written.
-    int writeSnapshot(float *out, int capacity) const;
+    int copySnapshotTo(float *out, int capacity) const;
 
 private:
     using Clock = std::chrono::steady_clock;

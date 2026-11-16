@@ -25,10 +25,11 @@
 //   m_cellStart : m_cellStart[c] .. m_cellStart[c + 1] is cell c's slice of m_entries
 class SurvivorGrid {
 public:
-    // cellSize: use at least the largest distance at which two objects can
-    // interact. coverRadius: how far around the centre the grid reaches.
+    // create a grid with each cell size = enemy size in this case
+                                                        // max enemy in this case
     void configure(float cellSize, float coverRadius, std::size_t maxItems) {
         m_cellSize = std::max(1.0F, cellSize);
+        // cell per side for sample: if side = 32 so 32 x 32 = 1024 cells on screen and allway lowest is 1
         m_side = std::max(1, static_cast<int>(std::ceil(2.0F * coverRadius / m_cellSize)));
         const std::size_t cells = at(m_side) * at(m_side);
         m_cellStart.assign(cells + 1U, 0);
@@ -40,8 +41,8 @@ public:
 
     // Files `count` objects into cells, with the grid centred on (centerX, centerY).
     // getPos(i, x, y) writes object i's position and returns false to skip it
-    // (e.g. an inactive pool slot). This is a counting sort: two passes, O(count).
     template <class GetPos>
+                //enemy size
     void build(int count, float centerX, float centerY, GetPos &&getPos) {
         const float halfWidth = 0.5F * static_cast<float>(m_side) * m_cellSize;
         m_originX = centerX - halfWidth;
@@ -59,10 +60,13 @@ public:
             const int cell = row(y) * m_side + col(x);
             m_cellOf[at(i)] = cell;
             ++m_cellStart[at(cell + 1)];
+            //sample: m_cellOf    = [1, 1, 6, -1, 5, 3]
+            //        m_cellStart = [0, 0, 2, 0, 1, 0, 1, 1, 0 … 0]
         }
         // Running total: cell c's slice starts where the cells before it end.
         for (std::size_t c = 1; c < m_cellStart.size(); ++c) {
             m_cellStart[c] += m_cellStart[c - 1];
+            //sample: m_cellStart = [0, 0, 2, 2, 3, 3, 4, 5, 5 … 5]
         }
 
         // Pass 2: drop each object into the next free place of its cell's slice.
@@ -106,7 +110,6 @@ public:
     float cellSize() const { return m_cellSize; }
 
 private:
-    // MISRA: no hidden int -> size_t conversion when indexing a vector.
     // Every index in this class is >= 0 (cells are clamped, -1 is checked first).
     static std::size_t at(int i) { return static_cast<std::size_t>(i); }
 

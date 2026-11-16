@@ -13,6 +13,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -78,13 +87,23 @@ fun SpaceSurvivor(
     var kills by remember { mutableIntStateOf(0) }
     var seconds by remember { mutableIntStateOf(0) }
     var gameOver by remember { mutableStateOf(false) }
+    var isPaused by remember { mutableStateOf(false) }   // paused by the player (pause button)
+    // The lifecycle observer below is created once, so it reads the latest value through this.
+    val pausedByPlayer by rememberUpdatedState(isPaused)
+
+    fun setPausedByPlayer(paused: Boolean) {
+        isPaused = paused
+        if (paused) engine.setJoystick(0f, 0f)   // don't keep flying with the old stick value on resume
+        engine.setPaused(paused)
+    }
 
     // Pause the C++ thread when the app goes to the background or the screen leaves.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, engine) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> engine.setPaused(false)
+                // Coming back from the background: stay paused if the player had paused.
+                Lifecycle.Event.ON_RESUME -> engine.setPaused(pausedByPlayer)
                 Lifecycle.Event.ON_PAUSE -> engine.setPaused(true)
                 else -> Unit
             }
@@ -127,7 +146,10 @@ fun SpaceSurvivor(
                 .onSizeChanged { engine.setScreen(it.width.toFloat(), it.height.toFloat()) }
                 .pointerInput(engine) {
                     detectTapGestures {
-                        if (engine.frame.isGameOver) engine.restart()   // tap to play again
+                        if (engine.frame.isGameOver) {
+                            setPausedByPlayer(false)
+                            engine.restart()   // tap to play again
+                        }
                     }
                 }
         ) {
@@ -251,6 +273,78 @@ fun SpaceSurvivor(
                 engine.setJoystick(x, y)
             },
         )
+
+        if (!gameOver) {
+            PauseButton(
+                paused = isPaused,
+                onClick = { setPausedByPlayer(!isPaused) },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp),
+            )
+        }
+
+        if (isPaused && !gameOver) {
+            PausedOverlay(onResume = { setPausedByPlayer(false) })
+        }
+    }
+}
+
+/** Round, see-through button in the corner: two bars while playing, a play arrow while paused. */
+@Composable
+private fun PauseButton(paused: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    IconButton(
+        onClick = onClick,
+        modifier = modifier
+            .size(48.dp)
+            .background(Color.White.copy(alpha = 0.15f), CircleShape),
+    ) {
+        if (paused) {
+            Icon(Icons.Default.PlayArrow, contentDescription = "Resume", tint = Color.White)
+        } else {
+            // The pause icon is not in the core icon set, so draw its two bars.
+            Row {
+                PauseBar()
+                Box(Modifier.width(5.dp))
+                PauseBar()
+            }
+        }
+    }
+}
+
+@Composable
+private fun PauseBar() {
+    Box(
+        Modifier
+            .size(width = 5.dp, height = 18.dp)
+            .background(Color.White, RoundedCornerShape(2.dp))
+    )
+}
+
+/** Dims the game and resumes on any tap. It sits on top, so the joystick can't be used while paused. */
+@Composable
+private fun PausedOverlay(onResume: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.55f))
+            .pointerInput(Unit) { detectTapGestures { onResume() } },
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "Paused",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.headlineLarge,
+            )
+            Text(
+                text = "Tap anywhere to resume",
+                color = Color.White.copy(alpha = 0.7f),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
     }
 }
 

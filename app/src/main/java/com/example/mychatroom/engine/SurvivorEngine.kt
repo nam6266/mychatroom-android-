@@ -72,7 +72,7 @@ class SurvivorEngine(
 }
 
 /**
- * One frame of Space Survivor. Layout matches SurvivorLoop::writeSnapshot:
+ * One frame of Space Survivor. Layout matches SurvivorLoop::copySnapshotTo:
  * [state, playerX, playerY, playerAngle, playerSize, enemySize, enemyCount,
  *  bulletSize, bulletCount, blastSize, blastCount, kills, secondsSurvived,
  *  enemy x,y,animTime,hitFlash ..., bullet x,y,angle ..., blast x,y,progress ...]

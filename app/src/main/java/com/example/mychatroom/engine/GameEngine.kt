@@ -84,7 +84,7 @@ class GameEngine(
 }
 
 /**
- * One frame of game state. Layout matches GameLoop::writeSnapshot in C++:
+ * One frame of game state. Layout matches GameLoop::copySnapshotTo in C++:
  * [state, score, playerX, playerY, playerSize, enemySize, enemyCount, bulletSize, bulletCount,
  *  powerUpSize, powerUpCount, weaponLevel,
  *  enemy x,y ..., bullet x,y ..., power-up x,y ...]

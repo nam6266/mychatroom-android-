@@ -15,7 +15,7 @@
 //   UI thread (Kotlin, ~60 fps)          logic thread (this class)
 //   ---------------------------          --------------------------
 //   setScreen / movePlayerBy / restart -> queued, applied at the next tick
-//   writeSnapshot()                    <- latest published state, interpolated
+//   copySnapshotTo()                   <- latest published state, interpolated
 //
 // The two threads never share GameWorld: input goes through m_inputMutex and
 // output through m_snapshotMutex, so each lock is held for microseconds.
@@ -23,7 +23,7 @@ class GameLoop {
 public:
     enum State : int { Running = 0, Paused = 1, GameOver = 2 };
 
-    // Layout written by writeSnapshot():
+    // Layout copied out by copySnapshotTo():
     //   [0] state  [1] score  [2] playerX  [3] playerY  [4] playerSize
     //   [5] enemySize  [6] enemyCount  [7] bulletSize  [8] bulletCount
     //   [9] powerUpSize  [10] powerUpCount  [11] weaponLevel
@@ -53,7 +53,7 @@ public:
     void restart();
 
     // Called from the UI thread once per rendered frame. Returns floats written.
-    int writeSnapshot(float *out, int capacity) const;
+    int copySnapshotTo(float *out, int capacity) const;
 
 private:
     using Clock = std::chrono::steady_clock;

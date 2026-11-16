@@ -225,7 +225,7 @@ void GameLoop::publish() {
     s.tickTime = Clock::now();
 }
 
-int GameLoop::writeSnapshot(float *out, int capacity) const {
+int GameLoop::copySnapshotTo(float *out, int capacity) const {
     if (capacity < kHeaderSize) {
         return 0;
     }

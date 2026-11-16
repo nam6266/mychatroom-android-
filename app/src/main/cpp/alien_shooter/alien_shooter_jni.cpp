@@ -75,7 +75,7 @@ Java_com_example_mychatroom_engine_GameEngine_nativeGetSnapshot(JNIEnv *env, job
         scratch.resize(static_cast<std::size_t>(capacity));
     }
 
-    const int written = loopFrom(handle)->writeSnapshot(scratch.data(), capacity);
+    const int written = loopFrom(handle)->copySnapshotTo(scratch.data(), capacity);
     env->SetFloatArrayRegion(out, 0, written, scratch.data());
     return written;
 }

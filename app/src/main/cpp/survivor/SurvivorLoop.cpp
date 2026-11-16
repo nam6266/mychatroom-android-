@@ -166,7 +166,7 @@ void SurvivorLoop::publish() {
     s.tickTime = Clock::now();
 }
 
-int SurvivorLoop::writeSnapshot(float *out, int capacity) const {
+int SurvivorLoop::copySnapshotTo(float *out, int capacity) const {
     if (capacity < kHeaderSize) {
         return 0;
     }

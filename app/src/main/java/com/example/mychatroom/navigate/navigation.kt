@@ -1,6 +1,7 @@
 package com.example.mychatroom.navigate
 
 import com.example.mychatroom.screen.SpaceSurvivor
+import com.example.mychatroom.screen.PortraitGame
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import android.net.Uri
 import android.os.Build
@@ -97,11 +98,11 @@ fun NavigationGraph(
         }
 
         composable(Screen.AlienGame.route) {
-            AlienGame()
+            PortraitGame { AlienGame() }
         }
 
         composable(Screen.SpaceSurvivor.route) {
-            SpaceSurvivor()
+            PortraitGame { SpaceSurvivor() }
         }
 
         composable(Screen.CameraScreen.route) {
