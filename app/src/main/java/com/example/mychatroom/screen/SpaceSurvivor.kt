@@ -1,10 +1,20 @@
 package com.example.mychatroom.screen
 
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableFloatStateOf
+import com.example.mychatroom.engine.SurvivorFrame
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
+import kotlin.math.cos
+import kotlin.math.sin
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.drag
@@ -87,6 +97,11 @@ fun SpaceSurvivor(
     var kills by remember { mutableIntStateOf(0) }
     var seconds by remember { mutableIntStateOf(0) }
     var gameOver by remember { mutableStateOf(false) }
+    var level by remember { mutableIntStateOf(1) }
+    var expProgress by remember { mutableFloatStateOf(0f) }   // 0..1 towards the next level
+    var laserLevel by remember { mutableIntStateOf(1) }
+    // What the level-up card offers right now (SurvivorFrame.UPGRADE_*), NONE = no card.
+    var offered by remember { mutableIntStateOf(SurvivorFrame.UPGRADE_NONE) }
     var isPaused by remember { mutableStateOf(false) }   // paused by the player (pause button)
     // The lifecycle observer below is created once, so it reads the latest value through this.
     val pausedByPlayer by rememberUpdatedState(isPaused)
@@ -124,6 +139,12 @@ fun SpaceSurvivor(
                 val s = frame.secondsSurvived.toInt()
                 if (s != seconds) seconds = s
                 if (frame.isGameOver != gameOver) gameOver = frame.isGameOver
+                if (frame.level != level) level = frame.level
+                val progress = if (frame.expNeeded > 0) frame.exp.toFloat() / frame.expNeeded else 0f
+                if (progress != expProgress) expProgress = progress
+                if (frame.laserLevel != laserLevel) laserLevel = frame.laserLevel
+                val card = if (frame.isLevelUp) frame.offeredUpgrade else SurvivorFrame.UPGRADE_NONE
+                if (card != offered) offered = card
                 frameTimeNanos = now
             }
         }
@@ -134,6 +155,11 @@ fun SpaceSurvivor(
     val alienHover = ImageBitmap.imageResource(R.drawable.alien_hover)
     val alienHit = ImageBitmap.imageResource(R.drawable.alien_hit)
     val alienBoom = ImageBitmap.imageResource(R.drawable.alien_boom)
+    // Laser shots, level 1..6 (index 0..5): each one thicker than the last.
+    val lasers = listOf(
+        R.drawable.laser_lv1, R.drawable.laser_lv2, R.drawable.laser_lv3,
+        R.drawable.laser_lv4, R.drawable.laser_lv5, R.drawable.laser_lv6,
+    ).map { ImageBitmap.imageResource(it) }
 
     Box(
         modifier
@@ -174,6 +200,17 @@ fun SpaceSurvivor(
             fun onScreen(x: Float, y: Float) =
                 x > -margin && x < size.width + margin && y > -margin && y < size.height + margin
 
+            // EXP orbs first, so aliens fly over them.
+            for (i in 0 until frame.orbCount) {
+                val x = frame.orbX(i) - cameraX
+                val y = frame.orbY(i) - cameraY
+                if (!onScreen(x, y)) continue
+                if (frame.orbIsNuke(i)) {
+                    drawOrb(x, y, frame.orbSize * 1.4f, NukeCore, NukeGlow)   // a bit bigger: easy to spot
+                } else {
+                    drawOrb(x, y, frame.orbSize, OrbCore, OrbGlow)
+                }
+            }
             for (i in 0 until frame.enemyCount) {
                 val x = frame.enemyX(i) - cameraX
                 val y = frame.enemyY(i) - cameraY
@@ -187,17 +224,42 @@ fun SpaceSurvivor(
                 if (!onScreen(x, y)) continue
                 drawAlienBoom(alienBoom, x, y, frame.blastSize, frame.blastProgress(i))
             }
+            val shot = lasers[frame.laserLevel - 1]
             for (i in 0 until frame.bulletCount) {
-                drawBolt(
+                drawLaser(
+                    image = shot,
                     centerX = frame.bulletX(i) - cameraX,
                     centerY = frame.bulletY(i) - cameraY,
-                    width = frame.bulletSize,
+                    length = frame.bulletLength,
+                    thickness = frame.bulletThickness,
                     degrees = frame.bulletAngle(i) * 180f / PI.toFloat(),
                 )
             }
 
+            // Ultimate style BEAMS (kept for later): 4 yellow beams spinning around the ship.
+            // The BARRAGE style needs nothing extra here: its shots are ordinary bullets.
+            if (frame.ultimateStyle == SurvivorFrame.ULTIMATE_BEAMS) {
+                for (k in 0 until SurvivorFrame.BEAM_COUNT) {
+                    val a = frame.beamAngle + k * (2f * PI.toFloat() / SurvivorFrame.BEAM_COUNT)
+                    val mid = frame.beamStart + frame.beamLength / 2f
+                    drawLaser(
+                        image = lasers[5],
+                        centerX = center.x + sin(a) * mid,     // 0 = up, clockwise: x = sin, y = -cos
+                        centerY = center.y - cos(a) * mid,
+                        length = frame.beamLength,
+                        thickness = frame.beamThickness,
+                        degrees = a * 180f / PI.toFloat(),
+                    )
+                }
+            }
+
             // The ship, rotated to face where it's flying (0 = up, clockwise).
             drawShip(ship, center, frame.playerSize, degrees = frame.playerAngle * 180f / PI.toFloat())
+
+            // Red orb picked up: the whole screen flashes white, then fades.
+            if (frame.nukeFlash > 0f) {
+                drawRect(Color.White.copy(alpha = 0.7f * frame.nukeFlash))
+            }
         }
 
         // HUD: time survived and kills.
@@ -218,6 +280,14 @@ fun SpaceSurvivor(
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleMedium,
             )
+            Text(
+                text = "Lv $level",
+                color = OrbCore,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            ExpBar(progress = expProgress)
         }
 
         if (gameOver) {
@@ -274,7 +344,7 @@ fun SpaceSurvivor(
             },
         )
 
-        if (!gameOver) {
+        if (!gameOver && offered == SurvivorFrame.UPGRADE_NONE) {
             PauseButton(
                 paused = isPaused,
                 onClick = { setPausedByPlayer(!isPaused) },
@@ -286,6 +356,114 @@ fun SpaceSurvivor(
 
         if (isPaused && !gameOver) {
             PausedOverlay(onResume = { setPausedByPlayer(false) })
+        }
+
+        if (offered != SurvivorFrame.UPGRADE_NONE && !isPaused && !gameOver) {
+            LevelUpCard(
+                offered = offered,
+                laserLevel = laserLevel,
+                lasers = lasers,
+                onChoose = {
+                    engine.chooseUpgrade(offered)
+                    offered = SurvivorFrame.UPGRADE_NONE   // hide at once; the next frame confirms
+                },
+            )
+        }
+    }
+}
+
+/** Thin bar under the level: how much EXP is collected towards the next level. */
+@Composable
+private fun ExpBar(progress: Float) {
+    Box(
+        Modifier
+            .padding(top = 4.dp)
+            .width(120.dp)
+            .height(6.dp)
+            .clip(RoundedCornerShape(3.dp))
+            .background(Color.White.copy(alpha = 0.15f)),
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth(progress.coerceIn(0f, 1f))
+                .height(6.dp)
+                .background(OrbCore),
+        )
+    }
+}
+
+/**
+ * Shown when the player levels up. The C++ round is frozen until the card is
+ * tapped. Today there is one choice (the next laser level, then the ultimate);
+ * more upgrade types can be added as more cards in the same Column later.
+ */
+@Composable
+private fun LevelUpCard(
+    offered: Int,
+    laserLevel: Int,
+    lasers: List<ImageBitmap>,
+    onChoose: () -> Unit,
+) {
+    val isUltimate = offered == SurvivorFrame.UPGRADE_ULTIMATE
+    val preview = if (isUltimate) lasers[5] else lasers[laserLevel.coerceAtMost(5)]   // the NEXT level's sprite
+    val title = if (isUltimate) "Ultimate laser" else "Laser Lv ${laserLevel + 1}"
+    val description = if (isUltimate) {
+        "A non-stop storm of lasers in every direction around your ship. Replaces your aimed shots."
+    } else {
+        "Thicker laser: more damage, faster fire and a bigger hitbox."
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.6f))
+            .pointerInput(Unit) { detectTapGestures { } },   // block the game underneath
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "Level up!",
+                color = OrbCore,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.headlineLarge,
+            )
+            Spacer(Modifier.height(16.dp))
+            Column(
+                modifier = Modifier
+                    .width(280.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFF1A1740))
+                    .clickable(onClick = onChoose)
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Image(
+                    bitmap = preview,
+                    contentDescription = title,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(preview.width.toFloat() / preview.height),
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = title,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    text = description,
+                    color = Color.White.copy(alpha = 0.75f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+                Text(
+                    text = "Tap to choose",
+                    color = OrbCore,
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+            }
         }
     }
 }
@@ -405,22 +583,41 @@ fun Joystick(
 }
 
 private val SpaceBackground = Color(0xFF070514)
-private val BoltCore = Color(0xFFFFF59D)   // pale yellow, same as Alien Shooter's bullets
-private val BoltGlow = Color(0x55FFB74D)   // soft orange halo
+private val BoltCore = Color(0xFFFFF59D)   // pale yellow: the kill counter
+private val OrbCore = Color(0xFF39FF6A)    // EXP green: orbs, level text, EXP bar
+private val OrbGlow = Color(0x5539FF6A)
+private val NukeCore = Color(0xFFFF3B3B)   // red Nuke orb
+private val NukeGlow = Color(0x66FF3B3B)
 
-/** A glowing bolt [width] wide and 3x as long, pointing along [degrees] (0 = up, clockwise). */
-private fun DrawScope.drawBolt(centerX: Float, centerY: Float, width: Float, degrees: Float) {
-    val length = width * 3f
-    val c = Offset(centerX, centerY)
-    drawCircle(BoltGlow, radius = width * 1.6f, center = c)
-    rotate(degrees = degrees, pivot = c) {
-        drawRoundRect(
-            color = BoltCore,
-            topLeft = Offset(centerX - width / 2f, centerY - length / 2f),
-            size = Size(width, length),
-            cornerRadius = CornerRadius(width / 2f),
+/**
+ * Draws a laser sprite [length] long and [thickness] thick, centred on
+ * (centerX, centerY), with its glowing tip pointing along [degrees]
+ * (0 = up, clockwise). The laser images point LEFT, so they get an extra
+ * 90-degree turn first.
+ */
+private fun DrawScope.drawLaser(
+    image: ImageBitmap,
+    centerX: Float,
+    centerY: Float,
+    length: Float,
+    thickness: Float,
+    degrees: Float,
+) {
+    rotate(degrees = degrees + 90f, pivot = Offset(centerX, centerY)) {
+        drawImage(
+            image = image,
+            dstOffset = IntOffset((centerX - length / 2f).roundToInt(), (centerY - thickness / 2f).roundToInt()),
+            dstSize = IntSize(length.roundToInt().coerceAtLeast(1), thickness.roundToInt().coerceAtLeast(1)),
         )
     }
+}
+
+/** An orb: soft glow, bright core, small highlight. [size] = diameter. */
+private fun DrawScope.drawOrb(x: Float, y: Float, size: Float, core: Color, glow: Color) {
+    val c = Offset(x, y)
+    drawCircle(glow, radius = size * 0.9f, center = c)
+    drawCircle(core, radius = size * 0.45f, center = c)
+    drawCircle(Color.White.copy(alpha = 0.8f), radius = size * 0.15f, center = Offset(x - size * 0.15f, y - size * 0.15f))
 }
 
 /** Draws [image] as a [spriteSize] square centred on [at], rotated by [degrees]. */

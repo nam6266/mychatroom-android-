@@ -19,14 +19,15 @@ namespace {
 }
 
 SurvivorLoop::SurvivorLoop(int ticksPerSecond, std::size_t maxEnemies, std::size_t maxBullets,
-                           std::size_t maxBlasts)
+                           std::size_t maxBlasts, std::size_t maxOrbs)
         : m_ticksPerSecond(std::max(1, ticksPerSecond)),
           m_tickDuration(std::chrono::duration_cast<Clock::duration>(
                   std::chrono::duration<double>(1.0 / std::max(1, ticksPerSecond)))),
-          m_world(maxEnemies, maxBullets, maxBlasts) {
+          m_world(maxEnemies, maxBullets, maxBlasts, maxOrbs) {
     m_snapshot.enemies.reserve(maxEnemies * 6);   // no allocation while playing
     m_snapshot.bullets.reserve(maxBullets * 5);
     m_snapshot.blasts.reserve(maxBlasts * 3);
+    m_snapshot.orbs.reserve(maxOrbs * 5);
 }
 
 SurvivorLoop::~SurvivorLoop() {
@@ -79,6 +80,11 @@ void SurvivorLoop::restart() {
     m_pending.restart = true;
 }
 
+void SurvivorLoop::chooseUpgrade(int upgrade) {
+    std::lock_guard<std::mutex> lock(m_inputMutex);
+    m_pending.upgrade = upgrade;
+}
+
 void SurvivorLoop::run() {
     const float dt = 1.0F / static_cast<float>(m_ticksPerSecond);
     auto next = Clock::now();
@@ -109,6 +115,7 @@ void SurvivorLoop::tick(float dt) {
         // tick; only one-off events are cleared.
         m_pending.hasScreen = false;
         m_pending.restart = false;
+        m_pending.upgrade = 0;
     }
     m_world.beginTick();
     if (input.hasScreen) {
@@ -116,6 +123,9 @@ void SurvivorLoop::tick(float dt) {
     }
     if (input.restart) {
         m_world.reset();
+    }
+    if (input.upgrade != 0) {
+        m_world.chooseUpgrade(static_cast<SurvivorWorld::Upgrade>(input.upgrade));
     }
     m_world.setJoystick(input.joyX, input.joyY);
     m_world.update(dt);
@@ -125,7 +135,15 @@ void SurvivorLoop::tick(float dt) {
 void SurvivorLoop::publish() {
     std::lock_guard<std::mutex> lock(m_snapshotMutex);
     Snapshot &s = m_snapshot;
-    s.state = m_paused ? Paused : (m_world.isGameOver() ? GameOver : Running);
+    if (m_paused) {
+        s.state = Paused;
+    } else if (m_world.isGameOver()) {
+        s.state = GameOver;
+    } else if (m_world.isChoosingUpgrade()) {
+        s.state = LevelUp;
+    } else {
+        s.state = Running;
+    }
     s.x = m_world.playerX();
     s.prevX = m_world.playerPrevX();
     s.y = m_world.playerY();
@@ -135,6 +153,17 @@ void SurvivorLoop::publish() {
     s.size = m_world.hasScreen() ? m_world.playerSize() : 0.0F;
     s.kills = m_world.kills();
     s.time = m_world.timeSurvived();
+    s.level = m_world.level();
+    s.exp = m_world.exp();
+    s.expNeeded = m_world.expNeeded();
+    s.laserLevel = m_world.laserLevel();
+    s.ultimate = static_cast<int>(m_world.ultimateStyle());
+    s.offered = static_cast<int>(m_world.offeredUpgrade());
+    s.beamAngle = m_world.beamAngle();
+    s.prevBeamAngle = m_world.prevBeamAngle();
+    s.beamStart = m_world.beamStart();
+    s.beamLength = m_world.beamLength();
+    s.beamThickness = m_world.beamThickness();
 
     s.enemySize = m_world.enemies().size();
     s.enemies.clear();
@@ -145,7 +174,8 @@ void SurvivorLoop::publish() {
         s.enemies.insert(s.enemies.end(), {e.x, e.prevX, e.y, e.prevY, e.age,
                                            e.hitFlash > 0.0F ? 1.0F : 0.0F});
     }
-    s.bulletSize = m_world.bullets().size();
+    s.bulletSize = m_world.bullets().thickness();
+    s.bulletLength = m_world.bullets().length();
     s.bullets.clear();
     for (const auto &b : m_world.bullets().bullets()) {
         if (!b.active) {
@@ -162,6 +192,15 @@ void SurvivorLoop::publish() {
             continue;
         }
         s.blasts.insert(s.blasts.end(), {e.x, e.y, e.age});
+    }
+    s.orbSize = m_world.orbs().size();
+    s.nukeFlash = m_world.nukeFlash();
+    s.orbs.clear();
+    for (const auto &o : m_world.orbs().orbs()) {
+        if (!o.active) {
+            continue;
+        }
+        s.orbs.insert(s.orbs.end(), {o.x, o.prevX, o.y, o.prevY, static_cast<float>(o.kind)});
     }
     s.tickTime = Clock::now();
 }
@@ -190,6 +229,7 @@ int SurvivorLoop::copySnapshotTo(float *out, int capacity) const {
     const int enemyCount = take(s.enemies.size() / 6, 4);
     const int bulletCount = take(s.bullets.size() / 5, 3);
     const int blastCount = take(s.blasts.size() / 3, 3);
+    const int orbCount = take(s.orbs.size() / 5, 3);
 
     out[0] = static_cast<float>(s.state);
     out[1] = lerp(s.prevX, s.x, alpha);
@@ -204,6 +244,20 @@ int SurvivorLoop::copySnapshotTo(float *out, int capacity) const {
     out[10] = static_cast<float>(blastCount);
     out[11] = static_cast<float>(s.kills);
     out[12] = s.time;
+    out[13] = static_cast<float>(s.level);
+    out[14] = static_cast<float>(s.exp);
+    out[15] = static_cast<float>(s.expNeeded);
+    out[16] = static_cast<float>(s.laserLevel);
+    out[17] = static_cast<float>(s.ultimate);
+    out[18] = static_cast<float>(s.offered);
+    out[19] = s.bulletLength;
+    out[20] = lerpAngle(s.prevBeamAngle, s.beamAngle, alpha);
+    out[21] = s.beamStart;
+    out[22] = s.beamLength;
+    out[23] = s.beamThickness;
+    out[24] = s.orbSize;
+    out[25] = static_cast<float>(orbCount);
+    out[26] = s.nukeFlash;
 
     // Animations (alien hover, explosions) advance to "now" between ticks.
     const float extraTime = s.state == Running
@@ -229,6 +283,12 @@ int SurvivorLoop::copySnapshotTo(float *out, int capacity) const {
         *dst++ = e[0];
         *dst++ = e[1];
         *dst++ = std::min(1.0F, (e[2] + extraTime) / s.blastDuration);   // progress 0..1
+    }
+    for (int i = 0; i < orbCount; ++i) {
+        const float *o = &s.orbs[static_cast<std::size_t>(i * 5)];
+        *dst++ = lerp(o[1], o[0], alpha);
+        *dst++ = lerp(o[3], o[2], alpha);
+        *dst++ = o[4];                      // kind
     }
     return static_cast<int>(dst - out);
 }

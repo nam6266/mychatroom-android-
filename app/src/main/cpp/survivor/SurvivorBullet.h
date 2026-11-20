@@ -12,27 +12,41 @@ struct SurvivorBulletState {
     bool active = false;
 };
 
-// Player bullets for Space Survivor (a fixed pool). Unlike Alien Shooter they
-// can fly in any direction, so each one keeps its own velocity, and they
+// Player laser shots for Space Survivor (a fixed pool). Unlike Alien Shooter
+// they can fly in any direction, so each one keeps its own velocity, and they
 // expire after a while because the map never ends.
+//
+// Laser level 1..6 (kMaxLevel) only changes how thick the shot is: the six
+// sprites laser_lv1..6 get thicker, and the hitbox grows with them. Damage and
+// fire rate per level live in SurvivorWorld.
 class SurvivorBullets {
 public:
+    static constexpr int kMaxLevel = 6;
+
     explicit SurvivorBullets(std::size_t maxCount);
 
     void reset(float screenWidth, float screenHeight);
+    void setLevel(int level);                            // 1..kMaxLevel, clamped
     void beginTick();
     void update(float dt);                               // move + expire
-    void fire(float x, float y, float dirX, float dirY);  // dir = unit vector
+    // dir = unit vector. speedScale > 1 = a faster shot that flies the same distance.
+    void fire(float x, float y, float dirX, float dirY, float speedScale = 1.0F);
 
     std::vector<SurvivorBulletState> &bullets() { return m_bullets; }
     const std::vector<SurvivorBulletState> &bullets() const { return m_bullets; }
-    float size() const { return m_size; }
-    float hitRadius() const { return m_size * 0.6F; }
+    int level() const { return m_level; }
+    float length() const { return m_length; }            // drawn length along the flight
+    float thickness() const;                             // drawn thickness: grows with the level
+    float hitRadius() const;
+    float headOffset() const;                            // from the centre to the glowing tip
     float range() const { return m_range; }              // how far a bullet flies
 
 private:
     std::vector<SurvivorBulletState> m_bullets;
-    float m_size = 0.0F, m_speed = 0.0F, m_range = 0.0F;
+    int m_level = 1;
+    float m_length = 0.0F;
+    float m_speed = 0.0F;
+    float m_range = 0.0F;
 };
 
 #endif //MY_CHATROOM_SURVIVORBULLET_H

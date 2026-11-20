@@ -15,17 +15,22 @@
 // touch the world at the same time.
 class SurvivorLoop {
 public:
-    enum State : int { Running = 0, Paused = 1, GameOver = 2 };
+    enum State : int { Running = 0, Paused = 1, GameOver = 2, LevelUp = 3 };
 
     // Layout copied out by copySnapshotTo(). Positions are WORLD coordinates (px):
     //   [0] state  [1] playerX  [2] playerY  [3] playerAngle (rad, 0 = up, clockwise)
-    //   [4] playerSize  [5] enemySize  [6] enemyCount  [7] bulletSize  [8] bulletCount
+    //   [4] playerSize  [5] enemySize  [6] enemyCount  [7] bulletThickness  [8] bulletCount
     //   [9] blastSize  [10] blastCount  [11] kills  [12] seconds survived
-    //   [13..] enemy x,y,animTime,hitFlash(0/1) | bullet x,y,angle | blast x,y,progress
-    static constexpr int kHeaderSize = 13;
+    //   [13] level  [14] exp  [15] expNeeded  [16] laserLevel  [17] ultimate (0 none, 1 barrage, 2 beams)
+    //   [18] offered upgrade (0 none, 1 laser, 2 ultimate)  [19] bulletLength
+    //   [20] beamAngle  [21] beamStart  [22] beamLength  [23] beamThickness
+    //   [24] orbSize  [25] orbCount  [26] nukeFlash (1 -> 0)
+    //   [27..] enemy x,y,animTime,hitFlash(0/1) | bullet x,y,angle | blast x,y,progress
+    //          | orb x,y,kind (0 green EXP, 1 red nuke)
+    static constexpr int kHeaderSize = 27;
 
     SurvivorLoop(int ticksPerSecond, std::size_t maxEnemies, std::size_t maxBullets,
-                 std::size_t maxBlasts);
+                 std::size_t maxBlasts, std::size_t maxOrbs);
     ~SurvivorLoop();
 
     SurvivorLoop(const SurvivorLoop &) = delete;
@@ -39,6 +44,8 @@ public:
     void setScreen(float width, float height);
     void setJoystick(float x, float y);
     void restart();
+    // The player tapped the level-up card. `upgrade` = the offered value from [18].
+    void chooseUpgrade(int upgrade);
 
     // Called from the UI thread once per rendered frame. Returns floats written.
     int copySnapshotTo(float *out, int capacity) const;
@@ -51,6 +58,7 @@ private:
         bool hasScreen = false;
         float joyX = 0.0F, joyY = 0.0F;   // latest stick position (not summed: it's a state)
         bool restart = false;
+        int upgrade = 0;                  // a level-up card was answered (0 = none)
     };
 
     struct Snapshot {
@@ -62,8 +70,23 @@ private:
         std::vector<float> enemies;   // x, prevX, y, prevY, age, flashing
         std::vector<float> bullets;   // x, prevX, y, prevY, angle
         std::vector<float> blasts;    // x, y, age
+        std::vector<float> orbs;      // x, prevX, y, prevY, kind
         int kills = 0;
         float time = 0.0F;
+        int level = 1;
+        int exp = 0;
+        int expNeeded = 1;
+        int laserLevel = 1;
+        int ultimate = 0;             // SurvivorWorld::UltimateStyle
+        int offered = 0;
+        float bulletLength = 0.0F;
+        float beamAngle = 0.0F;
+        float prevBeamAngle = 0.0F;
+        float beamStart = 0.0F;
+        float beamLength = 0.0F;
+        float beamThickness = 0.0F;
+        float orbSize = 0.0F;
+        float nukeFlash = 0.0F;
         Clock::time_point tickTime{};
     };
 

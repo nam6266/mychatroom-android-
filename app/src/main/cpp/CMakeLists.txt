@@ -48,6 +48,7 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         survivor/SurvivorEnemy.cpp
         survivor/SurvivorBullet.cpp
         survivor/SurvivorLoop.cpp
+        survivor/SurvivorOrb.cpp
 )
 
 # Headers in common/ can be included by name from either game's folder

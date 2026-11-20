@@ -11,7 +11,7 @@ struct SurvivorEnemyState {
     float prevX = 0.0F, prevY = 0.0F;   // last tick, for smooth drawing
     float age = 0.0F;                   // seconds alive: drives the hover animation
     float hitFlash = 0.0F;              // seconds left of the orange "hit" flash
-    int hp = 0;
+    float hp = 0.0F;                    // float: stronger lasers do more than 1 damage
     bool active = false;
 };
 
@@ -36,9 +36,17 @@ public:
     // Index of an alien whose hitbox touches a circle at (x, y) of `radius`, or -1.
     // Uses the grid, so it only looks at aliens near (x, y). Valid after update().
     int touching(float x, float y, float radius) const;
-    // One hit on alien `index`: -1 hp and a flash. Returns true if that destroyed
-    // it, and then reports where it was (for the explosion).
-    bool damage(int index, float *hitX, float *hitY);
+    // Every alien whose hitbox touches the line from (x0, y0) to (x1, y1) that is
+    // `halfWidth` thick on each side (a laser beam). Indices go into `out`
+    // (cleared first, each alien once). Uses the grid, like touching().
+    void touchingSegment(float x0, float y0, float x1, float y1, float halfWidth,
+                         std::vector<int> &out) const;
+    // Destroys every alien inside the rectangle (the visible screen, for the red
+    // Nuke orb). Their positions go into `outXY` as x, y pairs (cleared first).
+    void destroyInRect(float minX, float minY, float maxX, float maxY, std::vector<float> &outXY);
+    // One hit of `amount` damage on alien `index`, with a flash. Returns true if
+    // that destroyed it, and then reports where it was (for the explosion).
+    bool damage(int index, float amount, float *hitX, float *hitY);
 
     const std::vector<SurvivorEnemyState> &enemies() const { return m_enemies; }
     float size() const { return m_size; }        // drawn UFO width

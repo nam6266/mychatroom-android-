@@ -15,10 +15,11 @@ extern "C" {
 JNIEXPORT jlong JNICALL
 Java_com_example_mychatroom_engine_SurvivorEngine_nativeCreate(JNIEnv *, jobject, jint ticksPerSecond,
                                                                jint maxEnemies, jint maxBullets,
-                                                               jint maxBlasts) {
+                                                               jint maxBlasts, jint maxOrbs) {
     auto atLeast1 = [](jint n) { return static_cast<std::size_t>(n > 0 ? n : 1); };
     return reinterpret_cast<jlong>(new SurvivorLoop(ticksPerSecond, atLeast1(maxEnemies),
-                                                    atLeast1(maxBullets), atLeast1(maxBlasts)));
+                                                    atLeast1(maxBullets), atLeast1(maxBlasts),
+                                                    atLeast1(maxOrbs)));
 }
 
 JNIEXPORT void JNICALL
@@ -52,6 +53,12 @@ Java_com_example_mychatroom_engine_SurvivorEngine_nativeSetJoystick(JNIEnv *, jo
 JNIEXPORT void JNICALL
 Java_com_example_mychatroom_engine_SurvivorEngine_nativeRestart(JNIEnv *, jobject, jlong handle) {
     loopFrom(handle)->restart();
+}
+
+JNIEXPORT void JNICALL
+Java_com_example_mychatroom_engine_SurvivorEngine_nativeChooseUpgrade(JNIEnv *, jobject, jlong handle,
+                                                                      jint upgrade) {
+    loopFrom(handle)->chooseUpgrade(upgrade);
 }
 
 JNIEXPORT jint JNICALL

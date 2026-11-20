@@ -7,7 +7,7 @@ namespace {
     constexpr float kSizeOfScreenWidth = 0.09F;   // a bit smaller than the ship (0.10)
     constexpr float kHitRadiusOfSize = 0.42F;     // same fit as Alien Shooter's UFO
     constexpr float kSpeedOfScreenWidth = 0.12F;  // slow: about 1/5 of the ship's speed
-    constexpr int kHp = 3;                        // bullets needed per alien
+    constexpr float kHp = 3.0F;                   // 3 hits from a level-1 laser
     constexpr float kHitFlashSec = 0.10F;
     // Spawn rate: one every 1.2 s at the start, speeding up to one every
     // 0.35 s after 90 s of survival.
@@ -37,8 +37,9 @@ void SurvivorEnemies::reset(float screenWidth, float screenHeight) {
     m_size = screenWidth * kSizeOfScreenWidth;
     m_speed = screenWidth * kSpeedOfScreenWidth;
     m_spawnTimer = kFirstSpawnSec;
-    for (auto &e : m_enemies) { e = SurvivorEnemyState{};
-}
+    for (auto &e : m_enemies) {
+        e = SurvivorEnemyState{};
+    }
     // Cell = one alien size: bigger than any distance two things interact at
     // (alien-alien spacing, bullet-alien and ship-alien hit distances), so a
     // query only ever needs the cells right around it. The grid reaches a bit
@@ -195,9 +196,61 @@ int SurvivorEnemies::touching(float x, float y, float radius) const {
     return found;
 }
 
-bool SurvivorEnemies::damage(int index, float *hitX, float *hitY) {
+void SurvivorEnemies::touchingSegment(float x0, float y0, float x1, float y1, float halfWidth,
+                                      std::vector<int> &out) const {
+    out.clear();
+    const float dx = x1 - x0;
+    const float dy = y1 - y0;
+    const float lengthSq = dx * dx + dy * dy;
+    const float reach = halfWidth + hitRadius();     // beam edge + alien edge
+    // The grid answers "near a point", so walk along the beam in steps of one
+    // cell and ask around each point. The circle around a sample point must
+    // also cover half a step in each direction, so no part of the beam is missed.
+    const float step = std::max(1.0F, m_grid.cellSize());
+    const float length = std::sqrt(lengthSq);
+    const int samples = static_cast<int>(std::ceil(length / step)) + 1;
+    const float queryRadius = reach + step * 0.5F;
+    for (int s = 0; s < samples; ++s) {
+        const float t = (samples > 1) ? static_cast<float>(s) / static_cast<float>(samples - 1) : 0.0F;
+        m_grid.forEachCandidate(x0 + dx * t, y0 + dy * t, queryRadius, [&](int i) {
+            const auto &e = m_enemies[static_cast<std::size_t>(i)];
+            if (!e.active) {
+                return true;
+            }
+            // Exact test: distance from the alien to the closest point on the beam.
+            float u = 0.0F;
+            if (lengthSq > 0.0F) {
+                u = std::clamp(((e.x - x0) * dx + (e.y - y0) * dy) / lengthSq, 0.0F, 1.0F);
+            }
+            const float cx = x0 + dx * u - e.x;
+            const float cy = y0 + dy * u - e.y;
+            if (cx * cx + cy * cy < reach * reach) {
+                out.push_back(i);
+            }
+            return true;
+        });
+    }
+    // Neighbouring sample points see the same alien: keep each one once.
+    std::sort(out.begin(), out.end());
+    out.erase(std::unique(out.begin(), out.end()), out.end());
+}
+
+void SurvivorEnemies::destroyInRect(float minX, float minY, float maxX, float maxY,
+                                    std::vector<float> &outXY) {
+    outXY.clear();
+    for (auto &e : m_enemies) {
+        if (e.active && e.x >= minX && e.x <= maxX && e.y >= minY && e.y <= maxY) {
+            e.active = false;
+            outXY.push_back(e.x);
+            outXY.push_back(e.y);
+        }
+    }
+}
+
+bool SurvivorEnemies::damage(int index, float amount, float *hitX, float *hitY) {
     SurvivorEnemyState &e = m_enemies[static_cast<std::size_t>(index)];
-    if (--e.hp > 0) {
+    e.hp -= amount;
+    if (e.hp > 0.0F) {
         e.hitFlash = kHitFlashSec;
         return false;
     }
